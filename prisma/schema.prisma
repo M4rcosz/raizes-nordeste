@@ -1,0 +1,357 @@
+// ============================================================
+// DATABASE
+// ============================================================
+
+generator client {
+  provider = "prisma-client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// IDENTITY & ACCESS
+// ============================================================
+
+enum Role {
+  CUSTOMER  
+  ATTENDANT
+  KITCHEN
+  MANAGER
+  ADMIN
+}
+
+model Users {
+  id                             String                          @id @default(uuid())
+  businessUnitId                 String 
+      
+  name                           String
+  email                          String                          @unique
+  password                       String
+  phone                          String                          @unique
+  is_active                      Boolean                         @default(true)
+  created_at                     DateTime                        @default(now())
+  updated_at                     DateTime                        @updatedAt
+  updated_by                     String?
+  role                           Role                   
+      
+  businessUnit                   BusinessUnits                   @relation(fields: [businessUnitId], references: [id])
+  updatedBy                      Users?                          @relation("UserUpdatedBy", fields: [updated_by], references: [id])
+      
+  customerOrders                 Orders[]                        @relation("CustomerOrders")
+  attendantOrders                Orders[]                        @relation("AttendantOrders")
+  inventoryTransactions          InventoryTransactions[]
+  loyaltyAccounts                LoyaltyAccounts[]
+      
+  userUpdatedBy                  Users[]                         @relation("UserUpdatedBy")
+  businessUnitUpdatedBy          BusinessUnits[]                 @relation("BusinessUnitUpdatedBy")
+  productsUpdatedBy              Products[]                      @relation("ProductsUpdatedBy")
+  businessUnitMenuItemsUpdatedBy BusinessUnitMenuItems[]         @relation("BusinessUnitMenuItemsUpdatedBy")
+  inventoryUpdatedBy             Inventory[]                     @relation("InventoryUpdatedBy")
+  ordersUpdatedBy                Orders[]                        @relation("OrdersUpdatedBy")
+  promotionsUpdatedBy            Promotions[]                    @relation("PromotionsUpdatedBy")
+  loyaltyAccountsUpdatedBy       LoyaltyAccounts[]               @relation("LoyaltyAccountsUpdatedBy")
+}
+
+// ============================================================
+// BUSINESS UNITS & MENU
+// ============================================================
+
+model BusinessUnits {
+  id          String    @id @default(uuid())
+  name        String
+  cnpj        String    @unique
+  address     String
+  city        String
+  phone       String    @unique
+  is_active   Boolean   @default(true)
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  updated_by  String?
+
+  updatedBy   Users?     @relation("BusinessUnitUpdatedBy", fields: [updated_by], references: [id])
+
+  users       Users[]
+  orders      Orders[]
+  menuItems   BusinessUnitMenuItems[]
+  inventory   Inventory[]
+  promotions  Promotions[]
+}
+
+model Categories {
+  id          String         @id @default(uuid())
+  name        String
+  description String
+
+  products    Products[]
+}
+
+model Products {
+  id          String      @id @default(uuid())
+  categoryId  String
+
+  name        String 
+  description String
+  base_price  Decimal     @db.Decimal(10, 2)
+  image_url   String
+  is_active   Boolean     @default(true)
+  created_at  DateTime    @default(now())
+  updated_at  DateTime    @updatedAt
+  updated_by  String?
+
+  categories  Categories  @relation(fields: [categoryId], references: [id])
+  updatedBy   Users?      @relation("ProductsUpdatedBy", fields: [updated_by], references: [id])
+  menu_items  BusinessUnitMenuItems[]
+  inventory   Inventory[]
+  product     OrderItems[]
+}
+
+model BusinessUnitMenuItems {
+  id              String          @id @default(uuid())  
+  businessUnitId  String
+  productId       String
+
+  custom_price    Decimal         @db.Decimal(10, 2)
+  is_available    Boolean
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @updatedAt
+  updated_by      String?
+
+  businessUnit    BusinessUnits   @relation(fields: [businessUnitId], references: [id])
+  products        Products        @relation(fields: [productId], references: [id])
+  updatedBy       Users?          @relation("BusinessUnitMenuItemsUpdatedBy", fields: [updated_by], references: [id])
+
+  @@unique([businessUnitId, productId])
+}
+
+// ============================================================
+// INVENTORY
+// ============================================================
+
+enum InventoryTransactionType  {
+  IN
+  OUT
+  ADJUSTMENT
+  RESERVE
+}
+
+model Inventory {
+  id                    String        @id @default(uuid())
+  businessUnitId        String
+  productId             String
+
+  quantity              Int
+  min_quantity          Int
+  created_at            DateTime      @default(now())
+  updated_at            DateTime      @updatedAt
+  updated_by            String?
+
+  businessUnit          BusinessUnits @relation(fields: [businessUnitId], references: [id])
+  product               Products      @relation(fields: [productId], references: [id])
+  updatedBy             Users?        @relation("InventoryUpdatedBy", fields: [updated_by], references: [id])
+
+  inventoryTransactions InventoryTransactions[]
+
+  @@unique([businessUnitId, productId])
+}
+
+model InventoryTransactions {
+  id                String      @id @default(uuid())
+  inventoryId       String 
+  orderId           String?
+  created_by        String
+
+  type              InventoryTransactionType
+  quantity          Int
+  reason            String
+  created_at        DateTime    @default(now())
+
+  inventory         Inventory   @relation(fields: [inventoryId], references: [id])
+  order             Orders?     @relation(fields: [orderId], references: [id])
+  createdBy         Users       @relation(fields: [created_by], references: [id])
+}
+
+// ============================================================
+// ORDERS
+// ============================================================
+
+enum OrderChannel {
+  APP
+  WEB
+  TOTEM
+  COUNTER
+  PICKUP
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+model Orders {
+  id                    String        @id @default(uuid())
+  businessUnitId        String
+  customerId            String
+  attendantId           String?
+
+  pointsRedeemed        Int
+  pointsEarned          Int
+  totalAmount           Decimal       @db.Decimal(10, 2)
+  notes                 String?
+  orderChannel          OrderChannel
+  orderStatus           OrderStatus
+  created_at            DateTime      @default(now())
+  updated_at            DateTime      @updatedAt
+  updated_by            String?
+
+  businessUnit          BusinessUnits @relation(fields: [businessUnitId], references: [id])
+  customer              Users         @relation("CustomerOrders", fields: [customerId], references: [id])
+  attendant             Users?        @relation("AttendantOrders", fields: [attendantId], references: [id])
+  updatedBy             Users?        @relation("OrdersUpdatedBy", fields: [updated_by], references: [id])  
+
+  inventoryTransactions InventoryTransactions[]
+  orderItems            OrderItems[]
+  payments              Payments[]
+  orderPromotions       OrderPromotions[]
+  loyaltyTransactions   LoyaltyTransactions[]
+}
+
+model OrderItems {
+  id          String    @id @default(uuid())
+  orderId     String
+  productId   String
+
+  quantity    Int
+  unit_price  Decimal   @db.Decimal(10, 2)
+  subtotal    Decimal   @db.Decimal(10, 2)
+  notes       String?
+
+  order       Orders    @relation(fields: [orderId], references: [id])
+  product     Products  @relation(fields: [productId], references: [id])
+}
+
+// ============================================================
+// PAYMENTS
+// ============================================================
+
+enum PaymentMethods {
+  CREDIT_CARD
+  DEBIT_CARD
+  PIX
+  CASH
+  VOUCHER
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  APPROVED
+  REFUSED
+  CANCELLED
+}
+
+model Payments {
+  id                    String        @id @default(uuid())
+  orderId               String
+
+  amount                Decimal       @db.Decimal(10, 2)
+  method                PaymentMethods
+  status                PaymentStatus
+  ext_transaction_id    String?
+  gateway_request       Json?
+  gateway_response      Json?
+  created_at            DateTime      @default(now())
+  updated_at            DateTime      @updatedAt
+
+  order                 Orders        @relation(fields: [orderId], references: [id])
+}
+
+// ============================================================
+// PROMOTIONS
+// ============================================================
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+  FREE_ITEM
+}
+
+model Promotions {
+  id                String        @id @default(uuid())
+  businessUnitId    String
+
+  name              String
+  discount_type     DiscountType
+  discount_value    Decimal       @db.Decimal(10, 2)
+  min_order_value   Decimal       @db.Decimal(10, 2)
+  start_date        DateTime
+  end_date          DateTime
+  is_active         Boolean
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+  updated_by        String?
+
+  businessUnit      BusinessUnits @relation(fields: [businessUnitId], references: [id])
+  updatedBy         Users?        @relation("PromotionsUpdatedBy", fields: [updated_by], references: [id])
+
+  orderPromotions   OrderPromotions[]
+}
+
+model OrderPromotions {
+  id               String     @id @default(uuid())
+  orderId          String
+  promotionId      String
+
+  discount_applied Decimal    @db.Decimal(10, 2)
+
+  order            Orders     @relation(fields: [orderId], references: [id])
+  promotion        Promotions @relation(fields: [promotionId], references: [id])
+}
+
+// ============================================================
+// LOYALTY
+// ============================================================
+
+enum LoyaltyTransactionsType {
+  EARN
+  REDEEM
+  EXPIRE
+  ADJUSTMENT
+}
+
+model LoyaltyAccounts {
+  id                  String         @id @default(uuid())
+  customerId          String
+
+  total_points        Int
+  consent_given       Boolean
+  consent_date        DateTime?
+  created_at          DateTime       @default(now())
+  updated_at          DateTime       @updatedAt
+  updated_by          String?
+
+  customer            Users          @relation(fields: [customerId], references: [id])
+  updatedBy           Users?         @relation("LoyaltyAccountsUpdatedBy", fields: [updated_by], references: [id])
+  
+  loyaltyTransactions LoyaltyTransactions[]
+}
+
+model LoyaltyTransactions {
+  id                String           @id @default(uuid())
+  loyaltyAccountId  String
+  orderId           String?
+
+  type              LoyaltyTransactionsType
+  points            Int
+  description       String
+  created_at        DateTime         @default(now())
+
+  loyaltyAccounts   LoyaltyAccounts  @relation(fields: [loyaltyAccountId], references: [id])
+  order             Orders?          @relation(fields: [orderId], references: [id])
+}
+
