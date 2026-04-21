@@ -89,7 +89,7 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 
 ## Stay in touch
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
+- Author  - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
 - Website - [https://nestjs.com](https://nestjs.com/)
 - Twitter - [@nestframework](https://twitter.com/nestframework)
 
@@ -100,7 +100,7 @@ Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
 
 
 
-# Raizes do Nordeste - Sobre
+# Raizes do Nordeste - About
 
 ## Stack
 
@@ -109,18 +109,18 @@ Prisma como ORM
 PostgreSQL
 Docker
 
-## Dependências do Projeto
+## Project Dependencies
 
 - WSL Ubuntu: 24.04.4 
 - Node v24.15.0
 - npm 11.12.1
 - Docker 29.2.1
 
-## Arquitetura do Projeto
+## Project Architecture
 
-![Arquitetura do Projeto](public/arch.png)
+![Project Architecture](public/arch.png)
 
-### Estrutura de pastas
+### Folder Structure
 
 ```bash
 src/
@@ -130,28 +130,28 @@ src/
 │   │   ├── auth.service.ts
 │   │   ├── guards/         ← JwtAuthGuard, RolesGuard
 │   │   └── strategies/     ← JwtStrategy (Passport)
-│   ├── pedidos/
-│   │   ├── pedidos.controller.ts
+│   ├── orders/
+│   │   ├── orders.controller.ts
 │   │   ├── use-cases/
-│   │   │   ├── criar-pedido.use-case.ts
-│   │   │   └── atualizar-status.use-case.ts
-│   │   └── pedidos.module.ts
-│   ├── pagamentos/
-│   │   ├── pagamentos.controller.ts
+│   │   │   ├── create-order.use-case.ts
+│   │   │   └── update-status.use-case.ts
+│   │   └── orders.module.ts
+│   ├── payments/
+│   │   ├── payments.controller.ts
 │   │   ├── use-cases/
-│   │   │   └── processar-pagamento.use-case.ts
+│   │   │   └── payment-process.use-case.ts
 │   │   └── mock/
-│   │       └── payment-gateway.mock.ts  ← aqui fica o mock
-│   ├── estoque/
-│   ├── fidelidade/
-│   └── produtos/
+│   │       └── payment-gateway.mock.ts  ← Mock is Here
+│   ├── inventory/
+│   ├── loyalty/
+│   └── products/
 ├── domain/
-│   ├── entities/           ← classes puras, sem Prisma
-│   └── repositories/       ← interfaces (contratos)
+│   ├── entities/           ← Pure Classes, No Prisma
+│   └── repositories/       ← interfaces (contracts)
 ├── infrastructure/
 │   ├── prisma/
 │   │   ├── prisma.service.ts
-│   │   └── repositories/   ← implementação dos contratos
+│   │   └── repositories/   ← Contract Implementation
 │   └── logging/
 │       └── audit.service.ts
 ├── common/
@@ -160,11 +160,118 @@ src/
 │   └── decorators/         ← @Roles(), @CurrentUser()
 └── main.ts
 prisma/
-├── schema.prisma           ← fonte de verdade do banco
+├── schema.prisma           ← Database schema
 └── migrations/
 docker-compose.yml
 .env.example
 ```
 
-## Configurações para as variáveis de ambiente.
+## Environment variables configuration
+
+
+
+## Database
+
+### Technology choices
+
+PostgreSQL was chosen as the primary database for its native support for UUIDs,
+`DECIMAL` precision for monetary values, `JSON` fields for gateway payloads, and
+enum types — all of which are required by this domain.
+
+Prisma 7 was chosen as the ORM for its type-safe query builder, schema-first
+migration system, and `prisma.config.ts` separation between schema definition
+and connection configuration.
+
+---
+
+### Schema overview
+
+The schema is organized into six domains:
+
+| Domain | Tables |
+|---|---|
+| Identity & Access | `users` |
+| Business Units & Menu | `business_units`, `categories`, `products`, `business_unit_menu_items` |
+| Inventory | `inventory`, `inventory_transactions` |
+| Orders | `orders`, `order_items` |
+| Payments | `payments` |
+| Promotions | `promotions`, `order_promotions` |
+| Loyalty | `loyalty_accounts`, `loyalty_transactions` |
+
+---
+
+### Design decisions
+
+**UUIDs as primary keys**
+All tables use `@default(uuid())` instead of auto-increment integers.
+This avoids exposing sequential IDs in the API, prevents enumeration attacks,
+and aligns with distributed system conventions.
+
+**camelCase in schema, snake_case in the database**
+Prisma fields follow TypeScript naming conventions (`createdAt`, `businessUnitId`).
+All fields use `@map()` to store as `snake_case` in PostgreSQL (`created_at`, `business_unit_id`).
+Table names are mapped via `@@map()` to lowercase snake_case (`business_units`, `order_items`).
+
+**Monetary values as `Decimal`**
+All currency fields use `@db.Decimal(10, 2)` instead of `Float`.
+Floating-point arithmetic is not suitable for financial data due to precision loss.
+
+**`updated_by` only where it matters**
+Audit tracking via `updated_by` was applied selectively — only on `users`, `orders`,
+and `loyalty_accounts`, where traceability has regulatory (LGPD) or operational relevance.
+Inventory changes are already fully audited through `inventory_transactions.created_by`.
+Applying `updated_by` to every table would couple all models to `users`
+and add noise without meaningful traceability.
+
+**Optional fields by business rule**
+- `attendant_id` in `orders` is nullable — APP, WEB, and TOTEM orders have no attendant.
+- `order_id` in `inventory_transactions` is nullable — stock entries (`IN`) and
+  adjustments are not tied to any order.
+- `order_id` in `loyalty_transactions` is nullable — manual point adjustments
+  and expirations are not tied to any order.
+- `consent_date` in `loyalty_accounts` is nullable — customers can register
+  and give consent later.
+- `business_unit_id` in `users` is nullable — `ADMIN` users manage the entire
+  network and are not assigned to a specific unit.
+
+**Unique constraints**
+- `@@unique([businessUnitId, productId])` on `business_unit_menu_items` and `inventory`
+  prevents duplicate entries for the same product in the same unit.
+- `@unique` on `payments.order_id` enforces a strict one-to-one relationship
+  between an order and its payment record.
+
+---
+
+### Timestamps convention
+
+| Situation | `created_at` | `updated_at` |
+|---|---|---|
+| Mutable operational data | ✅ | ✅ |
+| Immutable logs and transactions | ✅ | ❌ |
+| Static lookup tables | ❌ | ❌ |
+
+`inventory_transactions` and `loyalty_transactions` are append-only records —
+they are never edited after creation, so `updated_at` was intentionally omitted.
+`categories` is a static lookup table with no operational lifecycle.
+
+---
+
+### Indexes
+
+Indexes were applied based on the most frequent query patterns across the system.
+
+| Table | Indexed fields | Reason |
+|---|---|---|
+| `users` | `role`, `business_unit_id` | Filter users by role or unit |
+| `products` | `category_id`, `is_active` | Browse catalog by category or availability |
+| `orders` | `customer_id`, `business_unit_id`, `order_status`, `order_channel`, `created_at` | Core filtering and reporting queries |
+| `order_items` | `order_id`, `product_id` | Most frequent join in the system |
+| `inventory_transactions` | `inventory_id`, `order_id`, `created_by`, `created_at` | Stock movement history and audit trail |
+| `loyalty_transactions` | `loyalty_account_id`, `order_id` | Points history per customer or order |
+| `payments` | `status` | Filter by payment state (`order_id` already indexed via `@unique`) |
+| `promotions` | `[business_unit_id, is_active, start_date, end_date]` | Composite index for active promotion lookup within a unit |
+
+Fields with `@unique` constraints already carry an implicit index and were
+not duplicated with `@@index`. Small static tables (`categories`, `order_promotions`)
+perform faster with a full scan than with index overhead.
 
