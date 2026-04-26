@@ -8,7 +8,7 @@ REST API for a multi-unit restaurant ordering system with inventory control, pay
 
 | Technology | Version | Role |
 |---|---|---|
-| Node.js | 20 | Runtime |
+| Node.js | 22 | Runtime |
 | NestJS | 11 | HTTP Framework |
 | TypeScript | 5.7 | Language |
 | Prisma | 7 | ORM |
@@ -20,7 +20,7 @@ REST API for a multi-unit restaurant ordering system with inventory control, pay
 ## Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) 29+
-- [Node.js](https://nodejs.org/) 20+
+- [Node.js](https://nodejs.org/) 22+
 - WSL Ubuntu 24.04 (if on Windows)
 
 ---

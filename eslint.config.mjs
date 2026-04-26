@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['eslint.config.mjs'],
+    ignores: ['eslint.config.mjs', 'dist/**', 'generated/**', 'node_modules/**'],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
@@ -26,10 +26,13 @@ export default tseslint.config(
   },
   {
     rules: {
-      '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/no-floating-promises': 'warn',
-      '@typescript-eslint/no-unsafe-argument': 'warn',
-      "prettier/prettier": ["error", { endOfLine: "auto" }],
+      '@typescript-eslint/no-explicit-any': 'error',        // force proper typing
+      '@typescript-eslint/no-floating-promises': 'error',   // promote to error
+      '@typescript-eslint/no-unsafe-argument': 'error',     // promote to error
+      '@typescript-eslint/explicit-function-return-type': 'warn', // good habit
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      'no-console': ['warn', { allow: ['error', 'warn'] }], // no console.log in prod
+      'prettier/prettier': 'error',
     },
   },
 );
