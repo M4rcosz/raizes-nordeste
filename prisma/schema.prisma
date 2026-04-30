@@ -3,8 +3,7 @@
 // ============================================================
 
 generator client {
-  provider = "prisma-client"
-  output   = "../generated"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -93,7 +92,7 @@ model Products {
   categoryId String @map("category_id")
 
   name        String   @unique
-  description String
+  description String?
   basePrice   Decimal  @map("base_price") @db.Decimal(10, 2)
   imageUrl    String   @map("image_url")
   isActive    Boolean  @default(true) @map("is_active")

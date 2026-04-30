@@ -1,8 +1,11 @@
 #!/bin/sh
+set -e
 
 echo "Waiting database..."
-echo "Running migrations..."
-npx prisma migrate deploy
+until npx prisma migrate deploy; do
+    echo "Migration failed, retrying in 3s..."
+    sleep 3
+done
 
 echo "Running seed..."
 npx prisma db seed

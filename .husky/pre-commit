@@ -1,1 +1,2 @@
+npm test -- --passWithNoTests --findRelatedTests $(git diff --cached --name-only)
 npx lint-staged

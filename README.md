@@ -12,7 +12,7 @@ REST API for a multi-unit restaurant ordering system with inventory control, pay
 | NestJS | 11 | HTTP Framework |
 | TypeScript | 5.7 | Language |
 | Prisma | 7 | ORM |
-| PostgreSQL | 15 | Database |
+| PostgreSQL | 17 | Database |
 | Docker | 29 | Containerization |
 
 ---
@@ -49,6 +49,8 @@ POSTGRES_DB=raizes_nordeste
 DATABASE_URL="postgresql://adminuser:your_password@localhost:5432/raizes_nordeste?schema=public"
 
 NODE_ENV=development
+
+PORT=3000
 ```
 
 > ⚠️ `DATABASE_URL` uses `localhost` for local development. Inside Docker, `docker-compose.yml` overrides this variable automatically using the `db` service name.

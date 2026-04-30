@@ -33,6 +33,9 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       'no-console': ['warn', { allow: ['error', 'warn'] }], // no console.log in prod
       'prettier/prettier': 'error',
+      'eqeqeq': 'error', // force strict equality operator 
+      'curly': 'error', // force curly brackets in every for | while | if | else
+      'prefer-const': 'error' // force unchanged let to be a const
     },
   },
 );

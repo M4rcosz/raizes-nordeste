@@ -1,1 +1,9 @@
+node_modules
+dist
 .env
+*.local
+.git
+.gitignore
+coverage
+prisma/migrations/dev*
+*.md
