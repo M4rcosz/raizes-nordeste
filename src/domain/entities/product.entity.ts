@@ -5,7 +5,8 @@ export class Product {
     public readonly id: string,
     public readonly name: string,
     public readonly description: string | null,
-    public readonly basePrice: Big,
+    /** Effective price in context: customPrice if fetched by business unit, base price otherwise. */
+    public readonly price: Big,
     public readonly isActive: boolean,
     public readonly categoryId: string,
     public readonly createdAt: Date,

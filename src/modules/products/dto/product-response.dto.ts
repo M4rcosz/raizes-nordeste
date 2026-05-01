@@ -5,7 +5,7 @@ export class ProductResponseDto {
     public readonly id: string,
     public readonly name: string,
     public readonly description: string | null,
-    public readonly basePrice: number,
+    public readonly price: number,
     public readonly isActive: boolean,
     public readonly categoryId: string,
     public readonly createdAt: Date,
@@ -13,16 +13,15 @@ export class ProductResponseDto {
   ) {}
 
   static fromEntity(product: Product): ProductResponseDto {
-    const dto = new ProductResponseDto(
+    return new ProductResponseDto(
       product.id,
       product.name,
       product.description,
-      product.basePrice.toNumber(),
+      product.price.toNumber(),
       product.isActive,
       product.categoryId,
       product.createdAt,
       product.updatedAt,
     );
-    return dto;
   }
 }

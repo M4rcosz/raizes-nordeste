@@ -17,7 +17,6 @@ export class GetActiveProductsUseCase {
     try {
       return await this.products.findAllActive();
     } catch (err) {
-      // TODO: What should be done? Retry? Return empty? throw to the controller?
       throw new ProductsFetchException(`Could not retrieve active products \n Error: ${err}`);
     }
   }

@@ -4,7 +4,6 @@ import { PrismaService } from '../prisma.service';
 import { Product } from '../../../domain/entities/product.entity';
 import type { Products as PrismaProduct } from '@prisma/client';
 import Big from 'big.js';
-import { DatabaseException } from '../../../common/exceptions/database.exception';
 
 @Injectable()
 export class PrismaProductRepository implements IProductRepository {
@@ -23,27 +22,37 @@ export class PrismaProductRepository implements IProductRepository {
       where: { businessUnitId, isAvailable: true },
       include: { product: true },
     });
-    return items.map((item) => this.toEntity(item.product));
+    return items.map((item) => {
+      const price = item.customPrice
+        ? new Big(item.customPrice.toString())
+        : new Big(item.product.basePrice.toString());
+      return new Product(
+        item.product.id,
+        item.product.name,
+        item.product.description,
+        price,
+        item.product.isActive,
+        item.product.categoryId,
+        item.product.createdAt,
+        item.product.updatedAt,
+      );
+    });
   }
 
   async findAllActive(): Promise<Product[]> {
-    try {
-      const raws = await this.prisma.products.findMany({
-        where: { isActive: true },
-      });
-      return raws.map((raw) => this.toEntity(raw));
-    } catch (err) {
-      throw new DatabaseException('Failed to fetch active products', err);
-    }
+    const raws = await this.prisma.products.findMany({
+      where: { isActive: true },
+    });
+    return raws.map((raw) => this.toEntity(raw));
   }
 
   private toEntity(raw: PrismaProduct): Product {
-    const basePrice = new Big(raw.basePrice.toString());
+    const price = new Big(raw.basePrice.toString());
     return new Product(
       raw.id,
       raw.name,
       raw.description,
-      basePrice,
+      price,
       raw.isActive,
       raw.categoryId,
       raw.createdAt,

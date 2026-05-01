@@ -103,7 +103,8 @@ npm run start:dev
 | `POSTGRES_PASSWORD` | PostgreSQL password | `secret123` |
 | `POSTGRES_DB` | Database name | `raizes_nordeste` |
 | `DATABASE_URL` | Full connection string | `postgresql://...` |
-| `NODE_ENV` | Where is running | `development` |
+| `NODE_ENV` | Runtime environment | `development` |
+| `PORT` | HTTP server port | `3000` |
 
 ---
 
