@@ -4,8 +4,8 @@ import { INestApplication } from '@nestjs/common';
 import type { Server } from 'http';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
-import type { PaginatedResponseDto } from '../src/shared/pagination/paginated-response.dto';
-import type { ProductResponseDto } from '../src/modules/business-units/infrastructure/http/dto/product-response.dto';
+import type { PaginatedResponseDto } from '@shared/pagination/paginated-response.dto';
+import type { ProductResponseDto } from '@modules/business-units/infrastructure/http/dto/product-response.dto';
 
 describe('Products (e2e)', () => {
   let app: INestApplication;

@@ -127,6 +127,70 @@ pagination primitives, future `Money`/`Email` value objects, global guards
 and interceptors) lives in `src/shared/`. If something is used by only one
 context, it stays inside that context.
 
+**8. Path aliases for cross-boundary imports**
+Imports that cross a context boundary use TypeScript path aliases:
+
+- `@shared/*` → `src/shared/*`
+- `@modules/*` → `src/modules/*`
+
+Imports **inside** the same bounded context stay relative
+(`../domain/entities/product.entity`). The alias is a visual signal that
+the import crosses a context boundary; a relative path documents that the
+dependency stays local. This is a convention, not a lint rule — review for
+it in PRs.
+
+> When adding a new alias, **four** configs must stay in sync:
+> `tsconfig.json` (`compilerOptions.paths`), `.swcrc` (`jsc.paths`),
+> `package.json` (`jest.moduleNameMapper`) and `test/jest-e2e.json`
+> (`moduleNameMapper`). If only one is updated, type-check passes but the
+> build output (or tests, or runtime) silently breaks. The values look
+> different in each file because they are interpreted relative to
+> different roots: `tsconfig.json` paths are relative to the tsconfig
+> directory (so `./src/shared/*`); `.swcrc` paths are relative to
+> `jsc.baseUrl` (so `shared/*` with baseUrl `./src`); jest paths use
+> jest's `<rootDir>` token.
+
+**9. Build pipeline — SWC with `tsc` type-check sidecar**
+`nest build` uses [SWC](https://swc.rs/) (configured in `nest-cli.json`
+under `compilerOptions.builder`) instead of `tsc`. SWC compiles each file
+in parallel — roughly 10× faster on this codebase — and resolves path
+aliases natively, so `dist/` contains real relative paths and no runtime
+alias resolver is needed.
+
+SWC reads its own configuration from a top-level `.swcrc` file. We keep
+that file minimal: it declares only `jsc.baseUrl` and `jsc.paths` so SWC
+has its own source of truth for alias resolution and does not try to
+recombine the tsconfig values. The decorator and `emitDecoratorMetadata`
+behavior NestJS needs comes from the defaults that the `@nestjs/cli`
+SWC integration injects — replicating them in `.swcrc` would just be
+duplication.
+
+SWC does not perform type checking. The `typeCheck: true` flag in
+`nest-cli.json` runs `tsc --noEmit` alongside the SWC compile so type
+errors still fail the build.
+
+> ⚠️ **Caveat — circular imports + SWC.** Because SWC compiles each file
+> in isolation, it can mis-emit `design:type` reflection metadata when two
+> files reference each other across a decorator boundary (`@Injectable()`,
+> `class-validator`, decorator-driven ORMs). The build succeeds; the bug
+> surfaces only at runtime (DI injects `undefined`, validator silently
+> skipped, ORM loses the relation).
+>
+> **Does not currently affect this project** — Prisma does not rely on
+> `emitDecoratorMetadata`, domain entities are plain classes, and
+> `class-validator` is not yet wired. Watch for it when:
+>
+> - Adding `class-validator` DTOs with bidirectional aggregate references
+> - Adding modules with circular DI (use NestJS `forwardRef()`)
+> - Adopting a decorator-based ORM with bidirectional relations
+>
+> Mitigations, in preferred order: (1) use `import type` for type-only
+> imports — they are erased at runtime and break many cycles automatically;
+> (2) treat circularity as a design smell and refactor; (3) `forwardRef()`
+> for module-level DI cycles; (4) for metadata-driven cases without ORM
+> workarounds, define a wrapper type analogous to TypeORM's `Relation<T>`
+> so SWC does not inline the type.
+
 ---
 
 ## Project Structure

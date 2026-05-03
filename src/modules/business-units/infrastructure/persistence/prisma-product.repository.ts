@@ -7,7 +7,7 @@ import {
   IProductRepository,
   ProductFilters,
 } from '../../domain/repositories/product.repository';
-import { PrismaService } from '../../../../shared/infrastructure/prisma/prisma.service';
+import { PrismaService } from '@shared/infrastructure/prisma/prisma.service';
 import { Product } from '../../domain/entities/product.entity';
 
 @Injectable()

@@ -3,8 +3,8 @@ import { GetActiveProductsUseCase } from '../../../application/use-cases/get-act
 import { GetProductsByBusinessUnitUseCase } from '../../../application/use-cases/get-products-by-business-unit.use-case';
 import { GetProductByIdUseCase } from '../../../application/use-cases/get-product-by-id.use-case';
 import { ProductResponseDto } from '../dto/product-response.dto';
-import { PaginatedResponseDto } from '../../../../../shared/pagination/paginated-response.dto';
-import { sanitizeLimit, DEFAULT_LIMIT } from '../../../../../shared/pagination/pagination';
+import { PaginatedResponseDto } from '@shared/pagination/paginated-response.dto';
+import { sanitizeLimit, DEFAULT_LIMIT } from '@shared/pagination/pagination';
 import { ProductFilters } from '../../../domain/repositories/product.repository';
 
 @Controller('products')
