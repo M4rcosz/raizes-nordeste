@@ -1,6 +1,6 @@
 export class ProductsFetchException extends Error {
-  constructor(message = 'Could not retrieve active products') {
-    super(message);
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options);
     this.name = 'ProductsFetchException';
   }
 }

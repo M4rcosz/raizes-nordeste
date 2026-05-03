@@ -1,26 +1,75 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, DefaultValuePipe, Get, Param, ParseIntPipe, Query } from '@nestjs/common';
 import { GetActiveProductsUseCase } from './use-cases/get-active-products.use-case';
+import { GetProductsByBusinessUnitUseCase } from './use-cases/get-products-by-business-unit.use-case';
+import { GetProductByIdUseCase } from './use-cases/get-product-by-id.use-case';
 import { ProductResponseDto } from './dto/product-response.dto';
-import { GetAllProductsByBusinessUnitUseCase } from './use-cases/get-products-by-business-unit.use-case';
+import { PaginatedResponseDto } from '../../common/pagination/paginated-response.dto';
+import { sanitizeLimit, DEFAULT_LIMIT } from '../../common/pagination/pagination';
+import { ProductFilters } from '../../domain/repositories/product.repository';
 
 @Controller('products')
 export class ProductsController {
   constructor(
     private readonly getActiveProducts: GetActiveProductsUseCase,
-    private readonly getProductsByBusinessUnit: GetAllProductsByBusinessUnitUseCase,
+    private readonly getProductsByBusinessUnit: GetProductsByBusinessUnitUseCase,
+    private readonly getProductById: GetProductByIdUseCase,
   ) {}
 
   @Get()
-  async findActive(): Promise<ProductResponseDto[]> {
-    const products = await this.getActiveProducts.execute();
-    return products.map((product) => ProductResponseDto.fromEntity(product));
+  async findActive(
+    @Query('limit', new DefaultValuePipe(DEFAULT_LIMIT), ParseIntPipe) rawLimit: number,
+    @Query('cursor') cursor: string | undefined,
+    @Query('search') search: string | undefined,
+    @Query('categoryId') categoryId: string | undefined,
+  ): Promise<PaginatedResponseDto<ProductResponseDto>> {
+    const limit = sanitizeLimit(rawLimit);
+    const filters = this.buildFilters(search, categoryId);
+
+    const result = await this.getActiveProducts.execute({ cursor, limit, filters });
+
+    return new PaginatedResponseDto(
+      result.data.map((product) => ProductResponseDto.fromEntity(product)),
+      result.meta,
+    );
   }
 
   @Get('by-business-unit/:businessUnitId')
   async findByBusinessUnit(
     @Param('businessUnitId') businessUnitId: string,
-  ): Promise<ProductResponseDto[]> {
-    const products = await this.getProductsByBusinessUnit.execute(businessUnitId);
-    return products.map((product) => ProductResponseDto.fromEntity(product));
+    @Query('limit', new DefaultValuePipe(DEFAULT_LIMIT), ParseIntPipe) rawLimit: number,
+    @Query('cursor') cursor: string | undefined,
+    @Query('search') search: string | undefined,
+    @Query('categoryId') categoryId: string | undefined,
+  ): Promise<PaginatedResponseDto<ProductResponseDto>> {
+    const limit = sanitizeLimit(rawLimit);
+    const filters = this.buildFilters(search, categoryId);
+
+    const result = await this.getProductsByBusinessUnit.execute({
+      businessUnitId,
+      cursor,
+      limit,
+      filters,
+    });
+
+    return new PaginatedResponseDto(
+      result.data.map((product) => ProductResponseDto.fromEntity(product)),
+      result.meta,
+    );
+  }
+
+  @Get(':productId')
+  async findById(@Param('productId') productId: string): Promise<ProductResponseDto> {
+    const product = await this.getProductById.execute(productId);
+    return ProductResponseDto.fromEntity(product);
+  }
+
+  private buildFilters(
+    search: string | undefined,
+    categoryId: string | undefined,
+  ): ProductFilters | undefined {
+    if (!search && !categoryId) {
+      return undefined;
+    }
+    return { search: search?.trim() || undefined, categoryId };
   }
 }

@@ -1,74 +1,104 @@
-import { beforeAll, describe, expect, it, jest, afterEach } from '@jest/globals';
-import { GetAllProductsByBusinessUnitUseCase } from './get-products-by-business-unit.use-case';
+import { afterEach, beforeAll, describe, expect, it, jest } from '@jest/globals';
+import { Test } from '@nestjs/testing';
+import Big from 'big.js';
+import { GetProductsByBusinessUnitUseCase } from './get-products-by-business-unit.use-case';
 import {
   IProductRepository,
   PRODUCT_REPOSITORY,
 } from '../../../domain/repositories/product.repository';
 import { Product } from '../../../domain/entities/product.entity';
-import { Test } from '@nestjs/testing';
-import Big from 'big.js';
 import { ProductsFetchException } from '../../../common/exceptions/product-fetch.exception';
 
-describe('GetAllProductsByBusinessUnitUseCase', () => {
+describe('GetProductsByBusinessUnitUseCase', () => {
+  let useCase: GetProductsByBusinessUnitUseCase;
+  let findAllByBusinessUnit: jest.MockedFunction<IProductRepository['findAllByBusinessUnit']>;
+
+  const buildProduct = (id: string): Product =>
+    new Product(
+      id,
+      `Product ${id}`,
+      null,
+      new Big('10.00'),
+      true,
+      'category-1',
+      new Date(),
+      new Date(),
+    );
+
+  beforeAll(async () => {
+    findAllByBusinessUnit = jest.fn() as jest.MockedFunction<
+      IProductRepository['findAllByBusinessUnit']
+    >;
+
+    const mockRepo: jest.Mocked<IProductRepository> = {
+      findAllActive: jest.fn(),
+      findById: jest.fn(),
+      findAllByBusinessUnit,
+    };
+
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        GetProductsByBusinessUnitUseCase,
+        { provide: PRODUCT_REPOSITORY, useValue: mockRepo },
+      ],
+    }).compile();
+
+    useCase = moduleRef.get(GetProductsByBusinessUnitUseCase);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
   describe('execute', () => {
-    let useCase: GetAllProductsByBusinessUnitUseCase;
-    let findAllByBusinessUnit: jest.MockedFunction<IProductRepository['findAllByBusinessUnit']>;
-
-    beforeAll(async () => {
-      findAllByBusinessUnit = jest.fn() as jest.MockedFunction<
-        IProductRepository['findAllByBusinessUnit']
-      >;
-      const mockRepo = {
-        findAllActive: jest.fn(),
-        findById: jest.fn(),
-        findAllByBusinessUnit,
-      } as jest.Mocked<IProductRepository>;
-
-      const module = await Test.createTestingModule({
-        providers: [
-          GetAllProductsByBusinessUnitUseCase,
-          {
-            provide: PRODUCT_REPOSITORY,
-            useValue: mockRepo,
-          },
-        ],
-      }).compile();
-
-      useCase = module.get(GetAllProductsByBusinessUnitUseCase);
-    });
-
-    afterEach(() => {
-      jest.clearAllMocks();
-    });
-
-    it('should return products', async () => {
-      const mockProduct: Product = new Product(
-        'uuid-1',
-        'Açaí',
-        null,
-        new Big('12.50'),
-        true,
-        'category-uuid-1',
-        new Date(),
-        new Date(),
-      );
-
-      findAllByBusinessUnit.mockResolvedValue([mockProduct]);
-      const data = await useCase.execute('bu-id');
-      expect(findAllByBusinessUnit).toHaveBeenCalledWith('bu-id');
-      expect(data).toStrictEqual([mockProduct]);
-    });
-
-    it('should return an empty array', async () => {
+    it('should forward businessUnitId, cursor, take = limit + 1 and filters', async () => {
       findAllByBusinessUnit.mockResolvedValue([]);
-      const data = await useCase.execute('bu-id');
-      expect(data).toStrictEqual([]);
+
+      await useCase.execute({
+        businessUnitId: 'bu-1',
+        limit: 5,
+        cursor: 'last-id',
+        filters: { search: 'juice' },
+      });
+
+      expect(findAllByBusinessUnit).toHaveBeenCalledWith({
+        businessUnitId: 'bu-1',
+        pagination: { cursor: 'last-id', take: 6 },
+        filters: { search: 'juice' },
+      });
     });
 
-    it('should throw an error', async () => {
-      findAllByBusinessUnit.mockRejectedValue(new Error('DB error'));
-      await expect(useCase.execute('bu-id')).rejects.toThrow(ProductsFetchException);
-      await expect(useCase.execute('bu-id')).rejects.toThrow('DB error');
+    it('should trim the extra item and expose nextCursor when there is a next page', async () => {
+      findAllByBusinessUnit.mockResolvedValue([
+        buildProduct('a'),
+        buildProduct('b'),
+        buildProduct('c'),
+      ]);
+
+      const result = await useCase.execute({ businessUnitId: 'bu-1', limit: 2 });
+
+      expect(result.data.map((p) => p.id)).toEqual(['a', 'b']);
+      expect(result.meta).toEqual({ limit: 2, hasMore: true, nextCursor: 'b' });
+    });
+
+    it('should return hasMore=false when fewer than limit + 1 items are returned', async () => {
+      findAllByBusinessUnit.mockResolvedValue([buildProduct('a')]);
+
+      const result = await useCase.execute({ businessUnitId: 'bu-1', limit: 20 });
+
+      expect(result.meta).toEqual({ limit: 20, hasMore: false, nextCursor: null });
+    });
+
+    it('should throw ProductsFetchException wrapping the original error when the repository fails', async () => {
+      const dbError = new Error('DB error');
+      findAllByBusinessUnit.mockRejectedValue(dbError);
+
+      await expect(useCase.execute({ businessUnitId: 'bu-1', limit: 20 })).rejects.toBeInstanceOf(
+        ProductsFetchException,
+      );
+      await expect(useCase.execute({ businessUnitId: 'bu-1', limit: 20 })).rejects.toMatchObject({
+        cause: dbError,
+      });
     });
   });
 });

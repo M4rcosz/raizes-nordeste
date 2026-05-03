@@ -1,5 +1,5 @@
 {
-  "name": "raizes-nordeste",
+  "name": "raizes-do-nordeste",
   "version": "0.0.1",
   "description": "",
   "author": "Marcos Paulo Freire Almeida",
@@ -19,7 +19,7 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "prepare": "husky",
-    "db": "docker exec -it raizes-nordeste-db-1 psql -U adminuser -d raizes_nordeste",
+    "db": "docker exec -it raizes-do-nordeste-db-1 psql -U adminuser -d raizes_do_nordeste",
     "db:up": "docker compose up -d --wait",
     "db:down": "docker compose down -v",
     "db:generate": "prisma generate",

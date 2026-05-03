@@ -1,9 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import { IProductRepository } from '../../../domain/repositories/product.repository';
+import type { Products as PrismaProduct, Prisma } from '@prisma/client';
+import Big from 'big.js';
+import {
+  FindProductsByBusinessUnitInput,
+  FindProductsInput,
+  IProductRepository,
+  ProductFilters,
+} from '../../../domain/repositories/product.repository';
 import { PrismaService } from '../prisma.service';
 import { Product } from '../../../domain/entities/product.entity';
-import type { Products as PrismaProduct } from '@prisma/client';
-import Big from 'big.js';
 
 @Injectable()
 export class PrismaProductRepository implements IProductRepository {
@@ -11,21 +16,53 @@ export class PrismaProductRepository implements IProductRepository {
 
   async findById(id: string): Promise<Product | null> {
     const raw = await this.prisma.products.findUnique({ where: { id } });
-    if (!raw) {
-      return null;
-    }
-    return this.toEntity(raw);
+    return raw ? this.toEntity(raw) : null;
   }
 
-  async findAllByBusinessUnit(businessUnitId: string): Promise<Product[]> {
-    const items = await this.prisma.businessUnitMenuItems.findMany({
-      where: { businessUnitId, isAvailable: true },
-      include: { product: true },
+  async findAllActive(input: FindProductsInput): Promise<Product[]> {
+    const { pagination, filters } = input;
+
+    const raws = await this.prisma.products.findMany({
+      where: {
+        isActive: true,
+        ...this.buildProductWhere(filters),
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: pagination.take,
+      ...(pagination.cursor && {
+        cursor: { id: pagination.cursor },
+        skip: 1,
+      }),
     });
+
+    return raws.map((raw) => this.toEntity(raw));
+  }
+
+  async findAllByBusinessUnit(input: FindProductsByBusinessUnitInput): Promise<Product[]> {
+    const { businessUnitId, pagination, filters } = input;
+
+    const items = await this.prisma.businessUnitMenuItems.findMany({
+      where: {
+        businessUnitId,
+        isAvailable: true,
+        product: this.buildProductWhere(filters),
+      },
+      include: { product: true },
+      orderBy: [{ product: { createdAt: 'desc' } }, { productId: 'desc' }],
+      take: pagination.take,
+      ...(pagination.cursor && {
+        cursor: {
+          businessUnitId_productId: {
+            businessUnitId,
+            productId: pagination.cursor,
+          },
+        },
+        skip: 1,
+      }),
+    });
+
     return items.map((item) => {
-      const price = item.customPrice
-        ? new Big(item.customPrice.toString())
-        : new Big(item.product.basePrice.toString());
+      const price = new Big((item.customPrice ?? item.product.basePrice).toString());
       return new Product(
         item.product.id,
         item.product.name,
@@ -39,20 +76,26 @@ export class PrismaProductRepository implements IProductRepository {
     });
   }
 
-  async findAllActive(): Promise<Product[]> {
-    const raws = await this.prisma.products.findMany({
-      where: { isActive: true },
-    });
-    return raws.map((raw) => this.toEntity(raw));
+  private buildProductWhere(filters?: ProductFilters): Prisma.ProductsWhereInput {
+    if (!filters) {
+      return {};
+    }
+    const where: Prisma.ProductsWhereInput = {};
+    if (filters.search) {
+      where.name = { contains: filters.search, mode: 'insensitive' };
+    }
+    if (filters.categoryId) {
+      where.categoryId = filters.categoryId;
+    }
+    return where;
   }
 
   private toEntity(raw: PrismaProduct): Product {
-    const price = new Big(raw.basePrice.toString());
     return new Product(
       raw.id,
       raw.name,
       raw.description,
-      price,
+      new Big(raw.basePrice.toString()),
       raw.isActive,
       raw.categoryId,
       raw.createdAt,

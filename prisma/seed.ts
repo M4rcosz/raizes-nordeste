@@ -13,9 +13,9 @@ async function main(): Promise<void> {
     update: {},
     create: {
       id: 'e36e29da-52ae-49af-ab40-5f1e8b61c8a1', // uuid static for api tests
-      name: 'Matriz',
+      name: 'Rainbow Flavors - Uberlândia',
       cnpj: '00.000.000/0001-00',
-      address: 'Rua X, 123',
+      address: 'Street X, 123',
       city: 'Uberlândia',
       phone: '34999999999',
       isActive: true,
@@ -26,11 +26,11 @@ async function main(): Promise<void> {
     where: { cnpj: '00.000.000/0002-00' },
     update: {},
     create: {
-      name: 'Matriz 2',
+      name: 'Ark Drinks - Araguari',
       cnpj: '00.000.000/0002-00',
-      address: 'Rua Z, 987',
-      city: 'São Paulo',
-      phone: '11999999999',
+      address: 'Street Z, 987',
+      city: 'Araguari',
+      phone: '34999999998',
       isActive: true,
     },
   });
@@ -39,26 +39,39 @@ async function main(): Promise<void> {
   // USERS
   // =======================================================
   await prisma.users.upsert({
-    where: { email: 'admin1@raizes.com' },
+    where: { email: 'r6-squad@raizes.com' },
     update: {},
     create: {
-      name: 'Admin 1',
-      email: 'admin1@raizes.com',
-      password_hash: 'pass1',
-      role: 'ADMIN',
+      name: 'Pedro Panic',
+      email: 'r6-squad@raizes.com',
+      passwordHash: 'vaulted-pass',
+      role: 'KITCHEN',
       businessUnitId: unit1.id,
       isActive: true,
     },
   });
 
   await prisma.users.upsert({
-    where: { email: 'admin2@raizes.com' },
+    where: { email: 'admin-tribes@raizes.com' },
     update: {},
     create: {
-      name: 'Admin 2',
-      email: 'admin2@raizes.com',
-      password_hash: 'pass2',
+      name: 'Everton Steve Jobs',
+      email: 'admin-tribes@raizes.com',
+      passwordHash: 'vaulted-pass',
       role: 'ADMIN',
+      businessUnitId: unit2.id,
+      isActive: true,
+    },
+  });
+
+  await prisma.users.upsert({
+    where: { email: 'chief@raizes.com' },
+    update: {},
+    create: {
+      name: 'Gustavo Player',
+      email: 'chief@raizes.com',
+      passwordHash: 'pass2',
+      role: 'MANAGER',
       businessUnitId: unit2.id,
       isActive: true,
     },
@@ -85,6 +98,15 @@ async function main(): Promise<void> {
     },
   });
 
+  const chickenCategory = await prisma.categories.upsert({
+    where: { name: 'Chicken' },
+    update: {},
+    create: {
+      name: 'Chicken',
+      description: 'Chicken Category',
+    },
+  });
+
   // =======================================================
   // PRODUCTS
   // =======================================================
@@ -92,6 +114,7 @@ async function main(): Promise<void> {
     where: { name: 'Açaí Fitness' },
     update: {},
     create: {
+      id: 'cebe6acf-e54e-4842-a8ec-eda9a439ceb5', // uuid static for api tests
       categoryId: acaiCategory.id,
       name: 'Açaí Fitness',
       basePrice: 20.5,
@@ -117,7 +140,17 @@ async function main(): Promise<void> {
       categoryId: beverageCategory.id,
       name: 'Grape Juice',
       basePrice: 9.7,
-      imageUrl: '@example2.com',
+      imageUrl: '@example3.com',
+    },
+  });
+  const prod4 = await prisma.products.upsert({
+    where: { name: 'Chicken Stroganoff' },
+    update: {},
+    create: {
+      categoryId: chickenCategory.id,
+      name: 'Chicken Stroganoff',
+      basePrice: 20.0,
+      imageUrl: '@example4.com',
     },
   });
 
@@ -163,7 +196,17 @@ async function main(): Promise<void> {
     create: {
       businessUnitId: unit2.id,
       productId: prod3.id,
-      customPrice: 12.3,
+      customPrice: 11.3,
+      isAvailable: true,
+    },
+  });
+  await prisma.businessUnitMenuItems.upsert({
+    where: { businessUnitId_productId: { businessUnitId: unit2.id, productId: prod4.id } },
+    update: {},
+    create: {
+      businessUnitId: unit2.id,
+      productId: prod4.id,
+      customPrice: 23.3,
       isAvailable: true,
     },
   });
