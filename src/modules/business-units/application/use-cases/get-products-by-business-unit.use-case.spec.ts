@@ -5,9 +5,9 @@ import { GetProductsByBusinessUnitUseCase } from './get-products-by-business-uni
 import {
   IProductRepository,
   PRODUCT_REPOSITORY,
-} from '../../../domain/repositories/product.repository';
-import { Product } from '../../../domain/entities/product.entity';
-import { ProductsFetchException } from '../../../common/exceptions/product-fetch.exception';
+} from '../../domain/repositories/product.repository';
+import { Product } from '../../domain/entities/product.entity';
+import { ProductsFetchException } from '../errors/product-fetch.exception';
 
 describe('GetProductsByBusinessUnitUseCase', () => {
   let useCase: GetProductsByBusinessUnitUseCase;

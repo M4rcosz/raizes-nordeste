@@ -3,12 +3,12 @@ import { Test } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import Big from 'big.js';
 import { ProductsController } from './products.controller';
-import { GetActiveProductsUseCase } from './use-cases/get-active-products.use-case';
-import { GetProductsByBusinessUnitUseCase } from './use-cases/get-products-by-business-unit.use-case';
-import { GetProductByIdUseCase } from './use-cases/get-product-by-id.use-case';
-import { Product } from '../../domain/entities/product.entity';
-import { ProductResponseDto } from './dto/product-response.dto';
-import { PaginatedResponseDto } from '../../common/pagination/paginated-response.dto';
+import { GetActiveProductsUseCase } from '../../../application/use-cases/get-active-products.use-case';
+import { GetProductsByBusinessUnitUseCase } from '../../../application/use-cases/get-products-by-business-unit.use-case';
+import { GetProductByIdUseCase } from '../../../application/use-cases/get-product-by-id.use-case';
+import { Product } from '../../../domain/entities/product.entity';
+import { ProductResponseDto } from '../dto/product-response.dto';
+import { PaginatedResponseDto } from '../../../../../shared/pagination/paginated-response.dto';
 
 describe('ProductsController', () => {
   let controller: ProductsController;

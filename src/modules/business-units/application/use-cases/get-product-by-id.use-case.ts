@@ -1,10 +1,10 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { Product } from '../../../domain/entities/product.entity';
-import { ProductsFetchException } from '../../../common/exceptions/product-fetch.exception';
+import { Product } from '../../domain/entities/product.entity';
+import { ProductsFetchException } from '../errors/product-fetch.exception';
 import {
   PRODUCT_REPOSITORY,
   type IProductRepository,
-} from '../../../domain/repositories/product.repository';
+} from '../../domain/repositories/product.repository';
 
 @Injectable()
 export class GetProductByIdUseCase {

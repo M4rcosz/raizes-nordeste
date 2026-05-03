@@ -5,10 +5,10 @@ import Big from 'big.js';
 import {
   IProductRepository,
   PRODUCT_REPOSITORY,
-} from '../../../domain/repositories/product.repository';
+} from '../../domain/repositories/product.repository';
 import { GetProductByIdUseCase } from './get-product-by-id.use-case';
-import { Product } from '../../../domain/entities/product.entity';
-import { ProductsFetchException } from '../../../common/exceptions/product-fetch.exception';
+import { Product } from '../../domain/entities/product.entity';
+import { ProductsFetchException } from '../errors/product-fetch.exception';
 
 describe('GetProductByIdUseCase', () => {
   describe('execute', () => {

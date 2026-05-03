@@ -3,10 +3,10 @@ import {
   PRODUCT_REPOSITORY,
   ProductFilters,
   type IProductRepository,
-} from '../../../domain/repositories/product.repository';
-import { ProductsFetchException } from '../../../common/exceptions/product-fetch.exception';
-import { Product } from '../../../domain/entities/product.entity';
-import { CursorPaginatedResult, buildCursorMeta } from '../../../common/pagination/pagination';
+} from '../../domain/repositories/product.repository';
+import { ProductsFetchException } from '../errors/product-fetch.exception';
+import { Product } from '../../domain/entities/product.entity';
+import { CursorPaginatedResult, buildCursorMeta } from '../../../../shared/pagination/pagination';
 
 export interface GetActiveProductsInput {
   cursor?: string;
