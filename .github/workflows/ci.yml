@@ -10,6 +10,23 @@ jobs:
   lint-and-build:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:17
+        env: 
+          POSTGRES_USER: adminuser
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: raizes_do_nordeste
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U adminuser -d raizes_do_nordeste"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://adminuser:postgres@localhost:5432/raizes_do_nordeste
+
     steps:
       - uses: actions/checkout@v4
 
@@ -33,3 +50,6 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: E2E Test
+        run: npm run test:e2e
