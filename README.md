@@ -46,8 +46,9 @@ customer loyalty program — across multiple business units (franchises).
 
 ## Architecture
 
-The codebase follows a pragmatic **Clean Architecture** approach, organized in
-four concentric layers that depend strictly inwards:
+The codebase follows **Clean Architecture organized by bounded context** — each
+business context owns its own four-layer stack, and dependencies point strictly
+inwards (infrastructure → application → domain).
 
 ```
    ┌────────────────────────────────────────────────────────┐
@@ -71,19 +72,32 @@ four concentric layers that depend strictly inwards:
    └────────────────────────────────────────────────────────┘
 ```
 
+> **Heads-up — structural change mid-project (May 2026):** the codebase was
+> refactored from a flat layout (`src/domain`, `src/infrastructure`,
+> `src/modules/<feature>`) into a per-bounded-context layout
+> (`src/modules/<context>/{domain,application,infrastructure}`). The flat
+> shape worked while only one feature module existed, but the planned domain
+> spans seven bounded contexts (`identity`, `business-units`, `inventory`,
+> `orders`, `payments`, `promotions`, `loyalty`) and a global `domain/` would
+> have ended up mixing entities from unrelated contexts. Moving the layered
+> stack inside each context makes ownership explicit, keeps cross-context
+> coupling visible (it has to cross a module boundary), and is the canonical
+> DDD layout.
+
 ### Architectural Decisions
 
 **1. Clean Architecture with NestJS pragmatism**
-The `domain/` layer contains pure TypeScript — no NestJS, no Prisma, no
-framework imports. This keeps business rules portable and trivial to unit
-test. Use cases, however, use `@Injectable()` so the DI container can wire
-them up — this is a deliberate, accepted compromise for ergonomics.
+The `domain/` layer of each context contains pure TypeScript — no NestJS, no
+Prisma, no framework imports. This keeps business rules portable and trivial
+to unit test. Use cases, however, use `@Injectable()` so the DI container can
+wire them up — this is a deliberate, accepted compromise for ergonomics.
 
 **2. Repository Pattern**
-`domain/repositories/` declares interfaces. `infrastructure/prisma/repositories/`
-provides Prisma-backed implementations. The use cases depend on the interface
-through a `Symbol` injection token (`PRODUCT_REPOSITORY`), which keeps the
-ORM swappable without touching domain or application code.
+Each context's `domain/repositories/` declares interfaces. The matching
+`infrastructure/persistence/` provides Prisma-backed implementations. Use
+cases depend on the interface through a `Symbol` injection token (e.g.
+`PRODUCT_REPOSITORY`), which keeps the ORM swappable without touching domain
+or application code.
 
 **3. Use Cases as the application boundary**
 Each business action is a single-purpose class with one `execute()` method.
@@ -98,14 +112,20 @@ ORM models never leak across layer boundaries.
 
 **5. Decimal-safe monetary values**
 Money is represented as [`big.js`](https://github.com/MikeMcl/big.js) inside
-the domain (avoiding IEEE-754 rounding errors) and as `Decimal(10, 2)` in
+the domain (avoiding IEEE-754 rounding errors) and as `Decimal(12, 2)` in
 PostgreSQL. DTOs convert to `number` only at the HTTP edge.
 
 **6. Errors model intent, not transport**
-- `ProductsFetchException` (a domain-level error) wraps the underlying cause
-  using the standard `Error.cause` option.
+- `ProductsFetchException` (an application-layer error) wraps the underlying
+  cause using the standard `Error.cause` option.
 - `NotFoundException` (NestJS) is thrown when a resource is missing, so the
   framework converts it to `404 Not Found` automatically.
+
+**7. `shared/` is the cross-context kernel**
+Anything reused across two or more contexts (Prisma client lifecycle,
+pagination primitives, future `Money`/`Email` value objects, global guards
+and interceptors) lives in `src/shared/`. If something is used by only one
+context, it stays inside that context.
 
 ---
 
@@ -115,22 +135,24 @@ PostgreSQL. DTOs convert to `number` only at the HTTP edge.
 src/
 ├── main.ts                       ← Bootstrap: prefix /api, CORS, shutdown hooks
 ├── app.module.ts                 ← Root module wiring
-├── common/
-│   └── exceptions/               ← Cross-cutting domain exceptions
-├── domain/                       ← Pure business layer (no framework deps)
-│   ├── entities/                 ← Product, BusinessUnitMenuItem
-│   └── repositories/             ← Interfaces + DI tokens
-├── infrastructure/
-│   └── prisma/
-│       ├── prisma.module.ts      ← @Global() PrismaService provider
-│       ├── prisma.service.ts     ← Prisma client lifecycle
-│       └── repositories/         ← Prisma implementations
-└── modules/                      ← Feature modules (HTTP layer)
-    └── products/
-        ├── products.controller.ts
-        ├── products.module.ts
-        ├── dto/                  ← Response DTOs (serialization only)
-        └── use-cases/            ← One file per business action
+├── shared/                       ← Cross-context kernel
+│   ├── infrastructure/
+│   │   └── prisma/               ← @Global() PrismaService + lifecycle
+│   └── pagination/               ← Cursor-pagination types and DTO envelope
+└── modules/                      ← One folder per bounded context
+    └── business-units/           ← Products, Categories, Menu Items, Units
+        ├── business-units.module.ts
+        ├── domain/               ← Pure rules (no framework imports)
+        │   ├── entities/         ← Product, BusinessUnitMenuItem
+        │   └── repositories/     ← Interfaces + DI tokens
+        ├── application/          ← Orchestration
+        │   ├── use-cases/        ← One file per business action
+        │   └── errors/           ← Application-layer errors (e.g. fetch wrappers)
+        └── infrastructure/       ← Adapters
+            ├── persistence/      ← Prisma repository implementations
+            └── http/
+                ├── controllers/  ← NestJS controllers
+                └── dto/          ← Response DTOs (serialization only)
 prisma/
 ├── schema.prisma                 ← Single source of truth for the database
 ├── seed.ts                       ← Idempotent seed for local dev
@@ -138,6 +160,10 @@ prisma/
 test/
 └── app.e2e-spec.ts               ← End-to-end HTTP tests
 ```
+
+> Future contexts (`identity`, `inventory`, `orders`, `payments`,
+> `promotions`, `loyalty`) will follow the same internal shape under
+> `src/modules/`.
 
 ---
 

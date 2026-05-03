@@ -6,9 +6,9 @@ import {
   FindProductsInput,
   IProductRepository,
   ProductFilters,
-} from '../../../domain/repositories/product.repository';
-import { PrismaService } from '../prisma.service';
-import { Product } from '../../../domain/entities/product.entity';
+} from '../../domain/repositories/product.repository';
+import { PrismaService } from '../../../../shared/infrastructure/prisma/prisma.service';
+import { Product } from '../../domain/entities/product.entity';
 
 @Injectable()
 export class PrismaProductRepository implements IProductRepository {

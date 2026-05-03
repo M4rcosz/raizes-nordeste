@@ -4,10 +4,10 @@ import Big from 'big.js';
 import {
   IProductRepository,
   PRODUCT_REPOSITORY,
-} from '../../../domain/repositories/product.repository';
+} from '../../domain/repositories/product.repository';
 import { GetActiveProductsUseCase } from './get-active-products.use-case';
-import { ProductsFetchException } from '../../../common/exceptions/product-fetch.exception';
-import { Product } from '../../../domain/entities/product.entity';
+import { ProductsFetchException } from '../errors/product-fetch.exception';
+import { Product } from '../../domain/entities/product.entity';
 
 describe('GetActiveProductsUseCase', () => {
   let useCase: GetActiveProductsUseCase;
