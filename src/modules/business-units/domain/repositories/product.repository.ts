@@ -1,5 +1,5 @@
 import { Product } from '../entities/product.entity';
-import { CursorPaginationParams } from '../../../../shared/pagination/pagination';
+import { CursorPaginationParams } from '@shared/pagination/pagination';
 
 /**
  * Query filters for listing products. All fields are optional.

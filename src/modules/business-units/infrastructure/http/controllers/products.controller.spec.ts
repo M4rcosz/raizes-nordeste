@@ -8,7 +8,7 @@ import { GetProductsByBusinessUnitUseCase } from '../../../application/use-cases
 import { GetProductByIdUseCase } from '../../../application/use-cases/get-product-by-id.use-case';
 import { Product } from '../../../domain/entities/product.entity';
 import { ProductResponseDto } from '../dto/product-response.dto';
-import { PaginatedResponseDto } from '../../../../../shared/pagination/paginated-response.dto';
+import { PaginatedResponseDto } from '@shared/pagination/paginated-response.dto';
 
 describe('ProductsController', () => {
   let controller: ProductsController;

@@ -6,7 +6,7 @@ import {
 } from '../../domain/repositories/product.repository';
 import { ProductsFetchException } from '../errors/product-fetch.exception';
 import { Product } from '../../domain/entities/product.entity';
-import { CursorPaginatedResult, buildCursorMeta } from '../../../../shared/pagination/pagination';
+import { CursorPaginatedResult, buildCursorMeta } from '@shared/pagination/pagination';
 
 export interface GetActiveProductsInput {
   cursor?: string;
