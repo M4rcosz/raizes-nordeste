@@ -2,24 +2,50 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   type IProductRepository,
   PRODUCT_REPOSITORY,
+  ProductFilters,
 } from '../../../domain/repositories/product.repository';
 import { Product } from '../../../domain/entities/product.entity';
 import { ProductsFetchException } from '../../../common/exceptions/product-fetch.exception';
+import { CursorPaginatedResult, buildCursorMeta } from '../../../common/pagination/pagination';
+
+export interface GetProductsByBusinessUnitInput {
+  businessUnitId: string;
+  cursor?: string;
+  limit: number;
+  filters?: ProductFilters;
+}
 
 @Injectable()
-export class GetAllProductsByBusinessUnitUseCase {
+export class GetProductsByBusinessUnitUseCase {
   constructor(
     @Inject(PRODUCT_REPOSITORY)
     private readonly products: IProductRepository,
   ) {}
 
-  async execute(businessUnitId: string): Promise<Product[]> {
+  async execute(input: GetProductsByBusinessUnitInput): Promise<CursorPaginatedResult<Product>> {
+    const { businessUnitId, cursor, limit, filters } = input;
+
+    let items: Product[];
     try {
-      return await this.products.findAllByBusinessUnit(businessUnitId);
+      items = await this.products.findAllByBusinessUnit({
+        businessUnitId,
+        pagination: { cursor, take: limit + 1 },
+        filters,
+      });
     } catch (err) {
       throw new ProductsFetchException(
-        `Could not retrieve products by business unit. Error: ${err}`,
+        `Could not retrieve products for business unit "${businessUnitId}".`,
+        { cause: err },
       );
     }
+
+    const hasMore = items.length > limit;
+    const trimmed = hasMore ? items.slice(0, limit) : items;
+    const lastItemId = trimmed[trimmed.length - 1]?.id;
+
+    return {
+      data: trimmed,
+      meta: buildCursorMeta(limit, hasMore, lastItemId),
+    };
   }
 }

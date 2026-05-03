@@ -26,15 +26,15 @@ model Users {
   id             String  @id @default(uuid())
   businessUnitId String? @map("business_unit_id")
 
-  name          String
-  email         String   @unique
-  password_hash String
-  phone         String?  @unique
-  isActive      Boolean  @default(true) @map("is_active")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-  updatedById   String?  @map("updated_by")
-  role          Role
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  phone        String?  @unique
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  updatedById  String?  @map("updated_by")
+  role         Role
 
   businessUnit BusinessUnits? @relation(fields: [businessUnitId], references: [id])
   updatedBy    Users?         @relation("UserUpdatedBy", fields: [updatedById], references: [id])
@@ -115,7 +115,7 @@ model BusinessUnitMenuItems {
   productId      String @map("product_id")
 
   customPrice Decimal  @map("custom_price") @db.Decimal(10, 2)
-  isAvailable Boolean  @map("is_available")
+  isAvailable Boolean  @default(true) @map("is_available")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 

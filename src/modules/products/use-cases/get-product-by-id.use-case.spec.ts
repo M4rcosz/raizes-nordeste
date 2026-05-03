@@ -1,0 +1,79 @@
+import { afterEach, beforeAll, describe, expect, it, jest } from '@jest/globals';
+import { Test } from '@nestjs/testing';
+import { NotFoundException } from '@nestjs/common';
+import Big from 'big.js';
+import {
+  IProductRepository,
+  PRODUCT_REPOSITORY,
+} from '../../../domain/repositories/product.repository';
+import { GetProductByIdUseCase } from './get-product-by-id.use-case';
+import { Product } from '../../../domain/entities/product.entity';
+import { ProductsFetchException } from '../../../common/exceptions/product-fetch.exception';
+
+describe('GetProductByIdUseCase', () => {
+  describe('execute', () => {
+    let useCase: GetProductByIdUseCase;
+    let findById: jest.MockedFunction<IProductRepository['findById']>;
+
+    beforeAll(async () => {
+      findById = jest.fn() as jest.MockedFunction<IProductRepository['findById']>;
+
+      const mockRepo: jest.Mocked<IProductRepository> = {
+        findAllActive: jest.fn(),
+        findById,
+        findAllByBusinessUnit: jest.fn(),
+      };
+
+      const moduleRef = await Test.createTestingModule({
+        providers: [
+          GetProductByIdUseCase,
+          {
+            provide: PRODUCT_REPOSITORY,
+            useValue: mockRepo,
+          },
+        ],
+      }).compile();
+
+      useCase = moduleRef.get(GetProductByIdUseCase);
+    });
+
+    afterEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should return the product when it exists', async () => {
+      const mockProduct = new Product(
+        'uuid-1',
+        'Lemon Juice',
+        null,
+        new Big('7.99'),
+        true,
+        'uuid-category',
+        new Date(),
+        new Date(),
+      );
+
+      findById.mockResolvedValue(mockProduct);
+
+      const data = await useCase.execute('uuid-1');
+
+      expect(findById).toHaveBeenCalledTimes(1);
+      expect(findById).toHaveBeenCalledWith('uuid-1');
+      expect(data).toBe(mockProduct);
+    });
+
+    it('should throw NotFoundException when the product does not exist', async () => {
+      findById.mockResolvedValue(null);
+
+      await expect(useCase.execute('missing-id')).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('should throw ProductsFetchException wrapping the original error when the repository fails', async () => {
+      const dbError = new Error('DB error');
+      findById.mockRejectedValue(dbError);
+
+      await expect(useCase.execute('uuid-1')).rejects.toBeInstanceOf(ProductsFetchException);
+      await expect(useCase.execute('uuid-1')).rejects.toMatchObject({ cause: dbError });
+    });
+  });
+});

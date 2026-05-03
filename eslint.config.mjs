@@ -26,16 +26,22 @@ export default tseslint.config(
   },
   {
     rules: {
-      '@typescript-eslint/no-explicit-any': 'error',        // force proper typing
-      '@typescript-eslint/no-floating-promises': 'error',   // promote to error
-      '@typescript-eslint/no-unsafe-argument': 'error',     // promote to error
-      '@typescript-eslint/explicit-function-return-type': 'warn', // good habit
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/no-unsafe-argument': 'error',
+      '@typescript-eslint/explicit-function-return-type': 'warn',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-      'no-console': ['warn', { allow: ['error', 'warn'] }], // no console.log in prod
+      'no-console': ['warn', { allow: ['error', 'warn'] }],
       'prettier/prettier': 'error',
-      'eqeqeq': 'error', // force strict equality operator 
-      'curly': 'error', // force curly brackets in every for | while | if | else
-      'prefer-const': 'error' // force unchanged let to be a const
+      eqeqeq: 'error',
+      curly: 'error',
+      'prefer-const': 'error',
+    },
+  },
+  {
+    files: ['**/*.spec.ts', '**/*.e2e-spec.ts', 'test/**/*.ts'],
+    rules: {
+      '@typescript-eslint/unbound-method': 'off',
     },
   },
 );

@@ -1,14 +1,33 @@
 import { Product } from '../entities/product.entity';
+import { CursorPaginationParams } from '../../common/pagination/pagination';
+
+/**
+ * Query filters for listing products. All fields are optional.
+ * `search` performs a case-insensitive substring match on `name`.
+ */
+export interface ProductFilters {
+  search?: string;
+  categoryId?: string;
+}
+
+export interface FindProductsInput {
+  pagination: CursorPaginationParams;
+  filters?: ProductFilters;
+}
+
+export interface FindProductsByBusinessUnitInput extends FindProductsInput {
+  businessUnitId: string;
+}
 
 export interface IProductRepository {
   findById(id: string): Promise<Product | null>;
   /**
-   * Returns available products for a business unit.
+   * Lists products available for a business unit, filtered and cursor-paginated.
    * Each product's `price` reflects the unit's `customPrice` when set,
    * falling back to the product's base price otherwise.
    */
-  findAllByBusinessUnit(businessUnitId: string): Promise<Product[]>;
-  findAllActive(): Promise<Product[]>;
+  findAllByBusinessUnit(input: FindProductsByBusinessUnitInput): Promise<Product[]>;
+  findAllActive(input: FindProductsInput): Promise<Product[]>;
 }
 
 export const PRODUCT_REPOSITORY = Symbol('ProductRepository');

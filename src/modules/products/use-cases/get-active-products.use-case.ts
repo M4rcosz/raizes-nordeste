@@ -1,10 +1,18 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   PRODUCT_REPOSITORY,
+  ProductFilters,
   type IProductRepository,
 } from '../../../domain/repositories/product.repository';
 import { ProductsFetchException } from '../../../common/exceptions/product-fetch.exception';
 import { Product } from '../../../domain/entities/product.entity';
+import { CursorPaginatedResult, buildCursorMeta } from '../../../common/pagination/pagination';
+
+export interface GetActiveProductsInput {
+  cursor?: string;
+  limit: number;
+  filters?: ProductFilters;
+}
 
 @Injectable()
 export class GetActiveProductsUseCase {
@@ -13,11 +21,26 @@ export class GetActiveProductsUseCase {
     private readonly products: IProductRepository,
   ) {}
 
-  async execute(): Promise<Product[]> {
+  async execute(input: GetActiveProductsInput): Promise<CursorPaginatedResult<Product>> {
+    const { cursor, limit, filters } = input;
+
+    let items: Product[];
     try {
-      return await this.products.findAllActive();
+      items = await this.products.findAllActive({
+        pagination: { cursor, take: limit + 1 },
+        filters,
+      });
     } catch (err) {
-      throw new ProductsFetchException(`Could not retrieve active products \n Error: ${err}`);
+      throw new ProductsFetchException('Could not retrieve active products.', { cause: err });
     }
+
+    const hasMore = items.length > limit;
+    const trimmed = hasMore ? items.slice(0, limit) : items;
+    const lastItemId = trimmed[trimmed.length - 1]?.id;
+
+    return {
+      data: trimmed,
+      meta: buildCursorMeta(limit, hasMore, lastItemId),
+    };
   }
 }

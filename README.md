@@ -1,85 +1,211 @@
 # Raízes do Nordeste — Backend API
 
-REST API for a multi-unit restaurant ordering system with inventory control, payment processing, and a customer loyalty program.
+[![CI](https://github.com/M4rcosz/raizes-do-nordeste/actions/workflows/ci.yml/badge.svg)](https://github.com/M4rcosz/raizes-do-nordeste/actions/workflows/ci.yml)
+
+REST API for a multi-unit restaurant ordering system. The platform powers menu
+browsing, order management, payment processing, inventory control and a
+customer loyalty program — across multiple business units (franchises).
+
+> **Status:** the project is being built incrementally. The product catalog
+> module is currently implemented; auth, orders, payments, inventory and
+> loyalty modules are planned (see [Roadmap](#roadmap)).
+
+---
+
+## Table of Contents
+
+- [Stack](#stack)
+- [Architecture](#architecture)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+- [Local Development](#local-development)
+- [Environment Variables](#environment-variables)
+- [Database](#database)
+- [API Reference](#api-reference)
+- [Testing](#testing)
+- [Code Quality](#code-quality)
+- [Roadmap](#roadmap)
+- [License](#license)
 
 ---
 
 ## Stack
 
-| Technology | Version | Role |
-|---|---|---|
-| Node.js | 22 | Runtime |
-| NestJS | 11 | HTTP Framework |
-| TypeScript | 5.7 | Language |
-| Prisma | 7 | ORM |
-| PostgreSQL | 17 | Database |
-| Docker | 29 | Containerization |
+| Technology  | Version | Role                          |
+| ----------- | ------- | ----------------------------- |
+| Node.js     | 22      | Runtime                       |
+| NestJS      | 11      | HTTP framework / DI container |
+| TypeScript  | 5.7     | Language                      |
+| Prisma      | 7       | ORM and migration tool        |
+| PostgreSQL  | 17      | Relational database           |
+| Jest        | 30      | Unit and e2e testing          |
+| Docker      | 29      | Containerization              |
+| big.js      | 7       | Arbitrary-precision decimals  |
 
 ---
 
-## Prerequisites
+## Architecture
 
-- [Docker](https://docs.docker.com/get-docker/) 29+
-- [Node.js](https://nodejs.org/) 22+
-- WSL Ubuntu 24.04 (if on Windows)
+The codebase follows a pragmatic **Clean Architecture** approach, organized in
+four concentric layers that depend strictly inwards:
+
+```
+   ┌────────────────────────────────────────────────────────┐
+   │                       API Layer                        │  HTTP edge
+   │  (NestJS controllers, guards, pipes, exception filters)│
+   └───────────────────────────┬────────────────────────────┘
+                               │ depends on
+   ┌───────────────────────────▼────────────────────────────┐
+   │                    Application Layer                   │  Orchestration
+   │            (Use Cases — one per business action)       │
+   └───────────────────────────┬────────────────────────────┘
+                               │ depends on
+   ┌───────────────────────────▼────────────────────────────┐
+   │                       Domain Layer                     │  Pure rules
+   │  (Entities, value objects, repository interfaces)      │
+   └───────────────────────────▲────────────────────────────┘
+                               │ implemented by
+   ┌───────────────────────────┴────────────────────────────┐
+   │                  Infrastructure Layer                  │  Adapters
+   │   (Prisma client, repositories, external integrations) │
+   └────────────────────────────────────────────────────────┘
+```
+
+### Architectural Decisions
+
+**1. Clean Architecture with NestJS pragmatism**
+The `domain/` layer contains pure TypeScript — no NestJS, no Prisma, no
+framework imports. This keeps business rules portable and trivial to unit
+test. Use cases, however, use `@Injectable()` so the DI container can wire
+them up — this is a deliberate, accepted compromise for ergonomics.
+
+**2. Repository Pattern**
+`domain/repositories/` declares interfaces. `infrastructure/prisma/repositories/`
+provides Prisma-backed implementations. The use cases depend on the interface
+through a `Symbol` injection token (`PRODUCT_REPOSITORY`), which keeps the
+ORM swappable without touching domain or application code.
+
+**3. Use Cases as the application boundary**
+Each business action is a single-purpose class with one `execute()` method.
+This produces small, focused, easy-to-test units and prevents controllers
+from accumulating logic.
+
+**4. Domain Entities, never raw ORM models**
+Repositories convert Prisma rows into rich domain entities (`Product`,
+`BusinessUnitMenuItem`) before returning them. Controllers convert entities
+into response DTOs (`ProductResponseDto`) before sending them over HTTP.
+ORM models never leak across layer boundaries.
+
+**5. Decimal-safe monetary values**
+Money is represented as [`big.js`](https://github.com/MikeMcl/big.js) inside
+the domain (avoiding IEEE-754 rounding errors) and as `Decimal(10, 2)` in
+PostgreSQL. DTOs convert to `number` only at the HTTP edge.
+
+**6. Errors model intent, not transport**
+- `ProductsFetchException` (a domain-level error) wraps the underlying cause
+  using the standard `Error.cause` option.
+- `NotFoundException` (NestJS) is thrown when a resource is missing, so the
+  framework converts it to `404 Not Found` automatically.
+
+---
+
+## Project Structure
+
+```
+src/
+├── main.ts                       ← Bootstrap: prefix /api, CORS, shutdown hooks
+├── app.module.ts                 ← Root module wiring
+├── common/
+│   └── exceptions/               ← Cross-cutting domain exceptions
+├── domain/                       ← Pure business layer (no framework deps)
+│   ├── entities/                 ← Product, BusinessUnitMenuItem
+│   └── repositories/             ← Interfaces + DI tokens
+├── infrastructure/
+│   └── prisma/
+│       ├── prisma.module.ts      ← @Global() PrismaService provider
+│       ├── prisma.service.ts     ← Prisma client lifecycle
+│       └── repositories/         ← Prisma implementations
+└── modules/                      ← Feature modules (HTTP layer)
+    └── products/
+        ├── products.controller.ts
+        ├── products.module.ts
+        ├── dto/                  ← Response DTOs (serialization only)
+        └── use-cases/            ← One file per business action
+prisma/
+├── schema.prisma                 ← Single source of truth for the database
+├── seed.ts                       ← Idempotent seed for local dev
+└── migrations/                   ← Versioned migration history
+test/
+└── app.e2e-spec.ts               ← End-to-end HTTP tests
+```
 
 ---
 
 ## Getting Started
 
+### Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) **29+**
+- [Node.js](https://nodejs.org/) **22+**
+- WSL Ubuntu 24.04 (if on Windows)
+
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/M4rcosz/raizes-nordeste.git
-cd raizes-nordeste
+git clone https://github.com/M4rcosz/raizes-do-nordeste.git
+cd raizes-do-nordeste
 ```
 
-### 2. Set up environment variables
+### 2. Configure environment variables
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` with your values:
+Edit `.env`:
 
 ```env
 POSTGRES_USER=adminuser
 POSTGRES_PASSWORD=your_password
-POSTGRES_DB=raizes_nordeste
-DATABASE_URL="postgresql://adminuser:your_password@localhost:5432/raizes_nordeste?schema=public"
+POSTGRES_DB=raizes_do_nordeste
+DATABASE_URL="postgresql://adminuser:your_password@localhost:5432/raizes_do_nordeste?schema=public"
 
 NODE_ENV=development
-
 PORT=3000
 ```
 
-> ⚠️ `DATABASE_URL` uses `localhost` for local development. Inside Docker, `docker-compose.yml` overrides this variable automatically using the `db` service name.
+> ⚠️ `DATABASE_URL` uses `localhost` for local development. Inside Docker
+> Compose, the `app` service overrides this variable so it points at the
+> `db` service hostname.
 
 ### 3. Install dependencies and generate the Prisma client
 
 ```bash
 npm install
-npx prisma generate
+npm run db:generate
 ```
 
-### 4. Start the database and run migrations
+### 4. Run the database and apply migrations
 
 ```bash
-docker compose up db -d
-
-DATABASE_URL="postgresql://adminuser:your_password@localhost:5432/raizes_nordeste?schema=public" npx prisma migrate dev
+npm run db:up        # starts only the db service
+npm run db:migrate   # applies pending migrations
+npm run db:seed      # loads sample data
 ```
 
-### 5. Start the full application
+### 5. Start the full stack
 
 ```bash
 docker compose up --build
 ```
 
-On startup, the container automatically runs:
-- Pending migrations (`prisma migrate deploy`)
-- Database seed (`prisma db seed`)
-- NestJS server initialization
+On startup, the application container automatically:
+
+1. Runs pending migrations (`prisma migrate deploy`)
+2. Runs the database seed (`prisma db seed`)
+3. Starts the NestJS server on port `3000`
+
+The API is then available at **http://localhost:3000/api**.
 
 ---
 
@@ -87,65 +213,35 @@ On startup, the container automatically runs:
 
 ```bash
 # Start only the database
-docker compose up db -d
+npm run db:up
 
 # Start the application in watch mode
 npm run start:dev
 ```
 
+A one-shot helper that resets the local database, regenerates the client,
+re-applies migrations, re-seeds and starts the watcher:
+
+```bash
+npm run devs
+```
+
+> ⚠️ `npm run devs` runs `db:down -v`, which **wipes the local database
+> volume**. Never run it against any environment that holds data you care
+> about.
+
 ---
 
 ## Environment Variables
 
-| Variable | Description | Example |
-|---|---|---|
-| `POSTGRES_USER` | PostgreSQL username | `adminuser` |
-| `POSTGRES_PASSWORD` | PostgreSQL password | `secret123` |
-| `POSTGRES_DB` | Database name | `raizes_nordeste` |
-| `DATABASE_URL` | Full connection string | `postgresql://...` |
-| `NODE_ENV` | Runtime environment | `development` |
-| `PORT` | HTTP server port | `3000` |
-
----
-
-## Architecture
-
-```
-src/
-├── modules/          ← Domain modules (HTTP layer)
-│   ├── auth/         ← JWT authentication and role guards
-│   ├── orders/       ← Order management and status transitions
-│   ├── payments/     ← Payment processing
-│   ├── inventory/    ← Stock control
-│   ├── loyalty/      ← Loyalty program
-│   └── products/     ← Product catalog
-├── domain/
-│   ├── entities/     ← Pure domain entities with no ORM dependency
-│   └── repositories/ ← Repository interfaces (contracts)
-├── infrastructure/
-│   ├── prisma/       ← PrismaService and repository implementations
-│   └── logging/      ← AuditService for traceability
-├── common/
-│   ├── filters/      ← GlobalExceptionFilter
-│   ├── interceptors/
-│   └── decorators/   ← @Roles(), @CurrentUser()
-└── main.ts
-prisma/
-├── schema.prisma     ← Database schema
-├── seed.ts           ← Initial data
-└── migrations/       ← Database version history
-```
-
-### Architecture Decisions
-
-**Clean Architecture**
-The `domain/` layer has no knowledge of Prisma or NestJS — pure TypeScript only. Modules handle the HTTP-to-domain bridge. Concrete implementations live in `infrastructure/`.
-
-**Repository Pattern**
-`domain/repositories/` defines interfaces. `infrastructure/prisma/repositories/` provides the implementations. This decouples business rules from the ORM, making it possible to swap Prisma without touching domain logic.
-
-**Use Cases**
-Complex operations such as `create-order` and `update-status` are isolated in `use-cases/` folders inside each module, separating orchestration from business rules.
+| Variable            | Description                               | Example                      |
+| ------------------- | ----------------------------------------- | ---------------------------- |
+| `POSTGRES_USER`     | PostgreSQL username                       | `adminuser`                  |
+| `POSTGRES_PASSWORD` | PostgreSQL password                       | `secret123`                  |
+| `POSTGRES_DB`       | Database name                             | `raizes_do_nordeste`         |
+| `DATABASE_URL`      | Full connection string consumed by Prisma | `postgresql://...`           |
+| `NODE_ENV`          | Runtime environment                       | `development` / `production` |
+| `PORT`              | HTTP server port                          | `3000`                       |
 
 ---
 
@@ -153,37 +249,133 @@ Complex operations such as `create-order` and `update-status` are isolated in `u
 
 ### Domains
 
-| Domain | Tables |
-|---|---|
-| Identity & Access | `users` |
-| Business Units & Menu | `business_units`, `categories`, `products`, `business_unit_menu_items` |
-| Inventory | `inventory`, `inventory_transactions` |
-| Orders | `orders`, `order_items` |
-| Payments | `payments` |
-| Promotions | `promotions`, `order_promotions` |
-| Loyalty | `loyalty_accounts`, `loyalty_transactions` |
+| Domain              | Tables                                                                    |
+| ------------------- | ------------------------------------------------------------------------- |
+| Identity & Access   | `users`                                                                   |
+| Business Units      | `business_units`, `categories`, `products`, `business_unit_menu_items`    |
+| Inventory           | `inventory`, `inventory_transactions`                                     |
+| Orders              | `orders`, `order_items`                                                   |
+| Payments            | `payments`                                                                |
+| Promotions          | `promotions`, `order_promotions`                                          |
+| Loyalty             | `loyalty_accounts`, `loyalty_transactions`                                |
 
 ### Design Decisions
 
-- **UUIDs as primary keys** — prevents sequential ID exposure and enumeration attacks
-- **camelCase in schema, snake_case in database** — enforced via `@map()` and `@@map()`
-- **Decimal for monetary values** — `@db.Decimal(10, 2)` avoids floating-point precision loss
-- **Selective audit trail** — `updated_by` applied only where operationally or legally relevant (LGPD)
+- **UUIDs as primary keys** — prevents sequential ID exposure and
+  enumeration attacks; safer for distributed systems.
+- **camelCase in TypeScript, snake_case in PostgreSQL** — enforced via
+  `@map()` and `@@map()` directives so each side follows its own idiomatic
+  convention.
+- **`Decimal(10, 2)` for monetary values** — avoids floating-point precision
+  loss on multiplication and rounding.
+- **`DateTime` (TIMESTAMPTZ) for `createdAt`/`updatedAt`** — preserves
+  timezone semantics, is human-readable in queries, and Prisma serializes
+  it as ISO-8601 to JSON. Numeric Unix timestamps were intentionally
+  rejected because they lose precision and timezone meaning.
+- **Optional descriptions are `NULL`, not empty strings** — `NULL`
+  unambiguously means "no value" and is semantically distinct from an empty
+  description, which is a meaningful (but unusual) state.
+- **Selective audit trail** — `updated_by` is applied only where
+  operationally or legally relevant (e.g. LGPD compliance), avoiding
+  pointless metadata noise on append-only tables.
+- **Indexed columns by access pattern** — every foreign key and every
+  enum-style filter (`isActive`, `orderStatus`, etc.) has an explicit
+  `@@index`.
+
+---
+
+## API Reference
+
+All routes are prefixed with **`/api`**.
+
+### Products
+
+| Method | Path                                              | Description                                            |
+| ------ | ------------------------------------------------- | ------------------------------------------------------ |
+| `GET`  | `/api/products`                                   | List all active products with their base price.        |
+| `GET`  | `/api/products/:productId`                        | Get a single product by id. Returns `404` if missing.  |
+| `GET`  | `/api/products/by-business-unit/:businessUnitId`  | List products available at a business unit (effective price = `customPrice` when set, otherwise `basePrice`). |
+
+#### Response — `ProductResponseDto`
+
+```json
+{
+  "id": "cebe6acf-e54e-4842-a8ec-eda9a439ceb5",
+  "name": "Açaí Fitness",
+  "description": null,
+  "price": 20.5,
+  "isActive": true,
+  "categoryId": "5b8f...",
+  "createdAt": "2026-01-01T12:00:00.000Z",
+  "updatedAt": "2026-01-01T12:00:00.000Z"
+}
+```
+
+### Error responses
+
+| Status | When                                                    | Body shape                                          |
+| ------ | ------------------------------------------------------- | --------------------------------------------------- |
+| `404`  | A product or business unit does not exist               | `{ "statusCode": 404, "message": "...", "error": "Not Found" }` |
+| `500`  | Repository / database failure (`ProductsFetchException`)| Standard NestJS error envelope                      |
 
 ---
 
 ## Testing
 
 ```bash
-# Unit tests
-npm run test
+# Unit tests (use cases, controllers, entities, DTOs)
+npm test
 
-# End-to-end tests
-npm run test:e2e
+# Watch mode
+npm run test:watch
 
-# Coverage report
+# Coverage report → ./coverage/lcov-report/index.html
 npm run test:cov
+
+# End-to-end tests (boots the full Nest application)
+npm run test:e2e
 ```
+
+### Testing strategy
+
+- **Unit tests** mock the `IProductRepository` interface, so use cases are
+  validated without any database. Entities and DTOs are tested in isolation
+  for behavior (`isAvailable()`) and pure transformation (`fromEntity()`).
+- **e2e tests** boot the full Nest application against the development
+  database and exercise the HTTP surface.
+- Each test asserts both **success paths** and **failure paths** — including
+  `NotFoundException` propagation and `ProductsFetchException` wrapping
+  with `Error.cause`.
+
+---
+
+## Code Quality
+
+- **ESLint** (`eslint.config.mjs`) with `typescript-eslint` strict-typed
+  rules, `no-explicit-any: error`, `no-floating-promises: error`,
+  `eqeqeq: error`, `curly: error`.
+- **Prettier** (`.prettierrc`) — single quotes, 100-column width,
+  trailing commas everywhere.
+- **Husky + lint-staged** — pre-commit hook runs ESLint and Prettier on
+  staged TypeScript files only.
+- **GitHub Actions CI** (`.github/workflows/ci.yml`) — installs
+  dependencies, generates the Prisma client, lints, tests and builds on
+  every push to `main`/`develop` and on every PR to `main`.
+
+---
+
+## Roadmap
+
+The product catalog module is shipped. Upcoming modules — already designed
+in the database schema — are:
+
+- [ ] **Auth** — JWT + role-based guards (`CUSTOMER`, `ATTENDANT`, `KITCHEN`,
+  `MANAGER`, `ADMIN`)
+- [ ] **Orders** — order creation, item management, status transitions
+- [ ] **Payments** — gateway integration (mocked initially), refund flow
+- [ ] **Inventory** — stock, reservations, audit log of inventory transactions
+- [ ] **Promotions** — percentage / fixed-amount / free-item discounts
+- [ ] **Loyalty** — points earning, redemption and consent tracking (LGPD)
 
 ---
 
