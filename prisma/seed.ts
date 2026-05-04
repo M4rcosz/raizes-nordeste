@@ -8,7 +8,7 @@ async function main(): Promise<void> {
   // =======================================================
   // BUSINESS UNITS
   // =======================================================
-  const unit1 = await prisma.businessUnits.upsert({
+  const unit1 = await prisma.businessUnit.upsert({
     where: { cnpj: '00.000.000/0001-00' },
     update: {},
     create: {
@@ -22,7 +22,7 @@ async function main(): Promise<void> {
     },
   });
 
-  const unit2 = await prisma.businessUnits.upsert({
+  const unit2 = await prisma.businessUnit.upsert({
     where: { cnpj: '00.000.000/0002-00' },
     update: {},
     create: {
@@ -38,7 +38,7 @@ async function main(): Promise<void> {
   // =======================================================
   // USERS
   // =======================================================
-  await prisma.users.upsert({
+  await prisma.user.upsert({
     where: { email: 'r6-squad@raizes.com' },
     update: {},
     create: {
@@ -51,7 +51,7 @@ async function main(): Promise<void> {
     },
   });
 
-  await prisma.users.upsert({
+  await prisma.user.upsert({
     where: { email: 'admin-tribes@raizes.com' },
     update: {},
     create: {
@@ -64,7 +64,7 @@ async function main(): Promise<void> {
     },
   });
 
-  await prisma.users.upsert({
+  await prisma.user.upsert({
     where: { email: 'chief@raizes.com' },
     update: {},
     create: {
@@ -80,7 +80,7 @@ async function main(): Promise<void> {
   // =======================================================
   // CATEGORIES
   // =======================================================
-  const acaiCategory = await prisma.categories.upsert({
+  const acaiCategory = await prisma.category.upsert({
     where: { name: 'Açaí' },
     update: {},
     create: {
@@ -89,16 +89,17 @@ async function main(): Promise<void> {
     },
   });
 
-  const beverageCategory = await prisma.categories.upsert({
+  const beverageCategory = await prisma.category.upsert({
     where: { name: 'Beverage' },
     update: {},
     create: {
+      id: 'ab24d105-6abe-4cab-bf39-bffd8c8cdabd', // uuid static for api tests
       name: 'Beverage',
       description: 'Beverage Category',
     },
   });
 
-  const chickenCategory = await prisma.categories.upsert({
+  const chickenCategory = await prisma.category.upsert({
     where: { name: 'Chicken' },
     update: {},
     create: {
@@ -110,7 +111,7 @@ async function main(): Promise<void> {
   // =======================================================
   // PRODUCTS
   // =======================================================
-  const prod1 = await prisma.products.upsert({
+  const prod1 = await prisma.product.upsert({
     where: { name: 'Açaí Fitness' },
     update: {},
     create: {
@@ -122,7 +123,7 @@ async function main(): Promise<void> {
     },
   });
 
-  const prod2 = await prisma.products.upsert({
+  const prod2 = await prisma.product.upsert({
     where: { name: 'Lemon Juice' },
     update: {},
     create: {
@@ -133,7 +134,7 @@ async function main(): Promise<void> {
     },
   });
 
-  const prod3 = await prisma.products.upsert({
+  const prod3 = await prisma.product.upsert({
     where: { name: 'Grape Juice' },
     update: {},
     create: {
@@ -143,7 +144,7 @@ async function main(): Promise<void> {
       imageUrl: '@example3.com',
     },
   });
-  const prod4 = await prisma.products.upsert({
+  const prod4 = await prisma.product.upsert({
     where: { name: 'Chicken Stroganoff' },
     update: {},
     create: {
@@ -157,7 +158,7 @@ async function main(): Promise<void> {
   // =======================================================
   // BUSINESS UNIT MENU ITEMS
   // =======================================================
-  await prisma.businessUnitMenuItems.upsert({
+  await prisma.businessUnitMenuItem.upsert({
     where: { businessUnitId_productId: { businessUnitId: unit1.id, productId: prod1.id } },
     update: {},
     create: {
@@ -168,7 +169,7 @@ async function main(): Promise<void> {
     },
   });
 
-  await prisma.businessUnitMenuItems.upsert({
+  await prisma.businessUnitMenuItem.upsert({
     where: { businessUnitId_productId: { businessUnitId: unit1.id, productId: prod2.id } },
     update: {},
     create: {
@@ -179,7 +180,7 @@ async function main(): Promise<void> {
     },
   });
 
-  await prisma.businessUnitMenuItems.upsert({
+  await prisma.businessUnitMenuItem.upsert({
     where: { businessUnitId_productId: { businessUnitId: unit2.id, productId: prod2.id } },
     update: {},
     create: {
@@ -190,7 +191,7 @@ async function main(): Promise<void> {
     },
   });
 
-  await prisma.businessUnitMenuItems.upsert({
+  await prisma.businessUnitMenuItem.upsert({
     where: { businessUnitId_productId: { businessUnitId: unit2.id, productId: prod3.id } },
     update: {},
     create: {
@@ -200,7 +201,7 @@ async function main(): Promise<void> {
       isAvailable: true,
     },
   });
-  await prisma.businessUnitMenuItems.upsert({
+  await prisma.businessUnitMenuItem.upsert({
     where: { businessUnitId_productId: { businessUnitId: unit2.id, productId: prod4.id } },
     update: {},
     create: {
