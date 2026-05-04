@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Products as PrismaProduct, Prisma } from '@prisma/client';
+import type { Product as PrismaProduct, Prisma } from '@prisma/client';
 import Big from 'big.js';
 import {
   FindProductsByBusinessUnitInput,
@@ -15,14 +15,14 @@ export class PrismaProductRepository implements IProductRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async findById(id: string): Promise<Product | null> {
-    const raw = await this.prisma.products.findUnique({ where: { id } });
+    const raw = await this.prisma.product.findUnique({ where: { id } });
     return raw ? this.toEntity(raw) : null;
   }
 
   async findAllActive(input: FindProductsInput): Promise<Product[]> {
     const { pagination, filters } = input;
 
-    const raws = await this.prisma.products.findMany({
+    const raws = await this.prisma.product.findMany({
       where: {
         isActive: true,
         ...this.buildProductWhere(filters),
@@ -41,7 +41,7 @@ export class PrismaProductRepository implements IProductRepository {
   async findAllByBusinessUnit(input: FindProductsByBusinessUnitInput): Promise<Product[]> {
     const { businessUnitId, pagination, filters } = input;
 
-    const items = await this.prisma.businessUnitMenuItems.findMany({
+    const items = await this.prisma.businessUnitMenuItem.findMany({
       where: {
         businessUnitId,
         isAvailable: true,
@@ -76,11 +76,11 @@ export class PrismaProductRepository implements IProductRepository {
     });
   }
 
-  private buildProductWhere(filters?: ProductFilters): Prisma.ProductsWhereInput {
+  private buildProductWhere(filters?: ProductFilters): Prisma.ProductWhereInput {
     if (!filters) {
       return {};
     }
-    const where: Prisma.ProductsWhereInput = {};
+    const where: Prisma.ProductWhereInput = {};
     if (filters.search) {
       where.name = { contains: filters.search, mode: 'insensitive' };
     }

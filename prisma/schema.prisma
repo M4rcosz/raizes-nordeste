@@ -22,7 +22,7 @@ enum Role {
   ADMIN
 }
 
-model Users {
+model User {
   id             String  @id @default(uuid())
   businessUnitId String? @map("business_unit_id")
 
@@ -36,17 +36,17 @@ model Users {
   updatedById  String?  @map("updated_by")
   role         Role
 
-  businessUnit BusinessUnits? @relation(fields: [businessUnitId], references: [id])
-  updatedBy    Users?         @relation("UserUpdatedBy", fields: [updatedById], references: [id])
+  businessUnit BusinessUnit? @relation(fields: [businessUnitId], references: [id])
+  updatedBy    User?         @relation("UserUpdatedBy", fields: [updatedById], references: [id])
 
-  customerOrders        Orders[]                @relation("CustomerOrders")
-  attendantOrders       Orders[]                @relation("AttendantOrders")
-  inventoryTransactions InventoryTransactions[]
-  loyaltyAccounts       LoyaltyAccounts[]
+  customerOrders        Order[]                @relation("CustomerOrders")
+  attendantOrders       Order[]                @relation("AttendantOrders")
+  inventoryTransactions InventoryTransaction[]
+  loyaltyAccounts       LoyaltyAccount[]
 
-  userUpdatedBy            Users[]           @relation("UserUpdatedBy")
-  ordersUpdatedBy          Orders[]          @relation("OrdersUpdatedBy")
-  loyaltyAccountsUpdatedBy LoyaltyAccounts[] @relation("LoyaltyAccountsUpdatedBy")
+  userUpdatedBy            User[]           @relation("UserUpdatedBy")
+  ordersUpdatedBy          Order[]          @relation("OrdersUpdatedBy")
+  loyaltyAccountsUpdatedBy LoyaltyAccount[] @relation("LoyaltyAccountsUpdatedBy")
 
   @@index([role])
   @@index([businessUnitId])
@@ -57,7 +57,7 @@ model Users {
 // BUSINESS UNITS & MENU
 // ============================================================
 
-model BusinessUnits {
+model BusinessUnit {
   id        String   @id @default(uuid())
   name      String
   cnpj      String   @unique
@@ -68,26 +68,26 @@ model BusinessUnits {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  users      Users[]
-  orders     Orders[]
-  menuItems  BusinessUnitMenuItems[]
+  users      User[]
+  orders     Order[]
+  menuItems  BusinessUnitMenuItem[]
   inventory  Inventory[]
-  promotions Promotions[]
+  promotions Promotion[]
 
   @@map("business_units")
 }
 
-model Categories {
+model Category {
   id          String @id @default(uuid())
   name        String @unique
   description String
 
-  products Products[]
+  products Product[]
 
   @@map("categories")
 }
 
-model Products {
+model Product {
   id         String @id @default(uuid())
   categoryId String @map("category_id")
 
@@ -99,17 +99,17 @@ model Products {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  category   Categories              @relation(fields: [categoryId], references: [id])
-  menuItems  BusinessUnitMenuItems[]
+  category   Category               @relation(fields: [categoryId], references: [id])
+  menuItems  BusinessUnitMenuItem[]
   inventory  Inventory[]
-  orderItems OrderItems[]
+  orderItems OrderItem[]
 
   @@index([categoryId])
   @@index([isActive])
   @@map("products")
 }
 
-model BusinessUnitMenuItems {
+model BusinessUnitMenuItem {
   id             String @id @default(uuid())
   businessUnitId String @map("business_unit_id")
   productId      String @map("product_id")
@@ -119,8 +119,8 @@ model BusinessUnitMenuItems {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  businessUnit BusinessUnits @relation(fields: [businessUnitId], references: [id])
-  product      Products      @relation(fields: [productId], references: [id])
+  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id])
+  product      Product      @relation(fields: [productId], references: [id])
 
   @@unique([businessUnitId, productId])
   @@map("business_unit_menu_items")
@@ -147,16 +147,16 @@ model Inventory {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  businessUnit BusinessUnits @relation(fields: [businessUnitId], references: [id])
-  product      Products      @relation(fields: [productId], references: [id])
+  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id])
+  product      Product      @relation(fields: [productId], references: [id])
 
-  inventoryTransactions InventoryTransactions[]
+  inventoryTransactions InventoryTransaction[]
 
   @@unique([businessUnitId, productId])
-  @@map("inventory")
+  @@map("inventories")
 }
 
-model InventoryTransactions {
+model InventoryTransaction {
   id          String  @id @default(uuid())
   inventoryId String  @map("inventory_id")
   orderId     String? @map("order_id")
@@ -168,8 +168,8 @@ model InventoryTransactions {
   createdAt DateTime                 @default(now()) @map("created_at")
 
   inventory     Inventory @relation(fields: [inventoryId], references: [id])
-  order         Orders?   @relation(fields: [orderId], references: [id])
-  createdByUser Users     @relation(fields: [createdBy], references: [id])
+  order         Order?    @relation(fields: [orderId], references: [id])
+  createdByUser User      @relation(fields: [createdBy], references: [id])
 
   @@index([inventoryId])
   @@index([orderId])
@@ -199,7 +199,7 @@ enum OrderStatus {
   CANCELLED
 }
 
-model Orders {
+model Order {
   id             String  @id @default(uuid())
   businessUnitId String  @map("business_unit_id")
   customerId     String  @map("customer_id")
@@ -215,16 +215,16 @@ model Orders {
   updatedAt      DateTime     @updatedAt @map("updated_at")
   updatedById    String?      @map("updated_by")
 
-  businessUnit BusinessUnits @relation(fields: [businessUnitId], references: [id])
-  customer     Users         @relation("CustomerOrders", fields: [customerId], references: [id])
-  attendant    Users?        @relation("AttendantOrders", fields: [attendantId], references: [id])
-  updatedBy    Users?        @relation("OrdersUpdatedBy", fields: [updatedById], references: [id])
+  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id])
+  customer     User         @relation("CustomerOrders", fields: [customerId], references: [id])
+  attendant    User?        @relation("AttendantOrders", fields: [attendantId], references: [id])
+  updatedBy    User?        @relation("OrdersUpdatedBy", fields: [updatedById], references: [id])
 
-  inventoryTransactions InventoryTransactions[]
-  orderItems            OrderItems[]
-  payments              Payments[]
-  orderPromotions       OrderPromotions[]
-  loyaltyTransactions   LoyaltyTransactions[]
+  inventoryTransactions InventoryTransaction[]
+  orderItems            OrderItem[]
+  payments              Payment[]
+  orderPromotions       OrderPromotion[]
+  loyaltyTransactions   LoyaltyTransaction[]
 
   @@index([customerId])
   @@index([businessUnitId])
@@ -234,7 +234,7 @@ model Orders {
   @@map("orders")
 }
 
-model OrderItems {
+model OrderItem {
   id        String @id @default(uuid())
   orderId   String @map("order_id")
   productId String @map("product_id")
@@ -244,8 +244,8 @@ model OrderItems {
   subtotal  Decimal @db.Decimal(10, 2)
   notes     String?
 
-  order   Orders   @relation(fields: [orderId], references: [id])
-  product Products @relation(fields: [productId], references: [id])
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
 
   @@index([orderId])
   @@index([productId])
@@ -272,7 +272,7 @@ enum PaymentStatus {
   CANCELLED
 }
 
-model Payments {
+model Payment {
   id      String @id @default(uuid())
   orderId String @unique @map("order_id")
 
@@ -285,7 +285,7 @@ model Payments {
   createdAt        DateTime      @default(now()) @map("created_at")
   updatedAt        DateTime      @updatedAt @map("updated_at")
 
-  order Orders @relation(fields: [orderId], references: [id])
+  order Order @relation(fields: [orderId], references: [id])
 
   @@index([status])
   @@map("payments")
@@ -301,7 +301,7 @@ enum DiscountType {
   FREE_ITEM
 }
 
-model Promotions {
+model Promotion {
   id             String @id @default(uuid())
   businessUnitId String @map("business_unit_id")
 
@@ -315,24 +315,24 @@ model Promotions {
   createdAt     DateTime     @default(now()) @map("created_at")
   updatedAt     DateTime     @updatedAt @map("updated_at")
 
-  businessUnit BusinessUnits @relation(fields: [businessUnitId], references: [id])
+  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id])
 
-  orderPromotions OrderPromotions[]
+  orderPromotions OrderPromotion[]
 
   @@index([businessUnitId])
   @@index([isActive, startDate, endDate])
   @@map("promotions")
 }
 
-model OrderPromotions {
+model OrderPromotion {
   id          String @id @default(uuid())
   orderId     String @map("order_id")
   promotionId String @map("promotion_id")
 
   discountApplied Decimal @map("discount_applied") @db.Decimal(10, 2)
 
-  order     Orders     @relation(fields: [orderId], references: [id])
-  promotion Promotions @relation(fields: [promotionId], references: [id])
+  order     Order     @relation(fields: [orderId], references: [id])
+  promotion Promotion @relation(fields: [promotionId], references: [id])
 
   @@map("order_promotions")
 }
@@ -348,7 +348,7 @@ enum LoyaltyTransactionType {
   ADJUSTMENT
 }
 
-model LoyaltyAccounts {
+model LoyaltyAccount {
   id         String @id @default(uuid())
   customerId String @unique @map("customer_id")
 
@@ -359,15 +359,15 @@ model LoyaltyAccounts {
   updatedAt    DateTime  @updatedAt @map("updated_at")
   updatedById  String?   @map("updated_by")
 
-  customer  Users  @relation(fields: [customerId], references: [id])
-  updatedBy Users? @relation("LoyaltyAccountsUpdatedBy", fields: [updatedById], references: [id])
+  customer  User  @relation(fields: [customerId], references: [id])
+  updatedBy User? @relation("LoyaltyAccountsUpdatedBy", fields: [updatedById], references: [id])
 
-  loyaltyTransactions LoyaltyTransactions[]
+  loyaltyTransactions LoyaltyTransaction[]
 
   @@map("loyalty_accounts")
 }
 
-model LoyaltyTransactions {
+model LoyaltyTransaction {
   id               String  @id @default(uuid())
   loyaltyAccountId String  @map("loyalty_account_id")
   orderId          String? @map("order_id")
@@ -377,8 +377,8 @@ model LoyaltyTransactions {
   description String
   createdAt   DateTime               @default(now()) @map("created_at")
 
-  loyaltyAccount LoyaltyAccounts @relation(fields: [loyaltyAccountId], references: [id])
-  order          Orders?         @relation(fields: [orderId], references: [id])
+  loyaltyAccount LoyaltyAccount @relation(fields: [loyaltyAccountId], references: [id])
+  order          Order?         @relation(fields: [orderId], references: [id])
 
   @@index([loyaltyAccountId])
   @@index([orderId])
