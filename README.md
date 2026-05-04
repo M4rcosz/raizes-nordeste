@@ -33,7 +33,7 @@ customer loyalty program — across multiple business units (franchises).
 
 | Technology  | Version | Role                          |
 | ----------- | ------- | ----------------------------- |
-| Node.js     | 22      | Runtime                       |
+| Node.js     | 24      | Runtime                       |
 | NestJS      | 11      | HTTP framework / DI container |
 | TypeScript  | 5.7     | Language                      |
 | Prisma      | 7       | ORM and migration tool        |
@@ -236,7 +236,7 @@ test/
 ### Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) **29+**
-- [Node.js](https://nodejs.org/) **22+**
+- [Node.js](https://nodejs.org/) **24+**
 - WSL Ubuntu 24.04 (if on Windows)
 
 ### 1. Clone the repository
