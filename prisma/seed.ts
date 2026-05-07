@@ -39,41 +39,41 @@ async function main(): Promise<void> {
   // USERS
   // =======================================================
   await prisma.user.upsert({
-    where: { email: 'r6-squad@raizes.com' },
+    where: { username: 'Panic' },
     update: {},
     create: {
+      username: 'Panic',
       name: 'Pedro Panic',
       email: 'r6-squad@raizes.com',
       passwordHash: 'vaulted-pass',
       role: 'KITCHEN',
       businessUnitId: unit1.id,
-      isActive: true,
     },
   });
 
   await prisma.user.upsert({
-    where: { email: 'admin-tribes@raizes.com' },
+    where: { username: 'davi151413' },
     update: {},
     create: {
+      username: 'davi151413',
       name: 'Everton Steve Jobs',
       email: 'admin-tribes@raizes.com',
       passwordHash: 'vaulted-pass',
       role: 'ADMIN',
       businessUnitId: unit2.id,
-      isActive: true,
     },
   });
 
   await prisma.user.upsert({
-    where: { email: 'chief@raizes.com' },
+    where: { username: 'gustavojogadorps' },
     update: {},
     create: {
+      username: 'gustavojogadorps',
       name: 'Gustavo Player',
       email: 'chief@raizes.com',
       passwordHash: 'pass2',
       role: 'MANAGER',
       businessUnitId: unit2.id,
-      isActive: true,
     },
   });
 

@@ -27,7 +27,8 @@ model User {
   businessUnitId String? @map("business_unit_id")
 
   name         String
-  email        String   @unique
+  username     String   @unique
+  email        String?  @unique
   passwordHash String   @map("password_hash")
   phone        String?  @unique
   isActive     Boolean  @default(true) @map("is_active")
