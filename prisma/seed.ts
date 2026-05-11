@@ -1,5 +1,10 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { hashPassword } from './utils/hash';
+
+if (process.env.NODE_ENV === 'production') {
+  throw new Error('Seed must not run in production.');
+}
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
@@ -38,6 +43,13 @@ async function main(): Promise<void> {
   // =======================================================
   // USERS
   // =======================================================
+
+  const [kitchenHash, adminHash, managerHash] = await Promise.all([
+    hashPassword('password1'),
+    hashPassword('password2'),
+    hashPassword('password3'),
+  ]);
+
   await prisma.user.upsert({
     where: { username: 'Panic' },
     update: {},
@@ -45,7 +57,7 @@ async function main(): Promise<void> {
       username: 'Panic',
       name: 'Pedro Panic',
       email: 'r6-squad@raizes.com',
-      passwordHash: 'vaulted-pass',
+      passwordHash: kitchenHash,
       role: 'KITCHEN',
       businessUnitId: unit1.id,
     },
@@ -58,7 +70,7 @@ async function main(): Promise<void> {
       username: 'davi151413',
       name: 'Everton Steve Jobs',
       email: 'admin-tribes@raizes.com',
-      passwordHash: 'vaulted-pass',
+      passwordHash: adminHash,
       role: 'ADMIN',
       businessUnitId: unit2.id,
     },
@@ -71,7 +83,7 @@ async function main(): Promise<void> {
       username: 'gustavojogadorps',
       name: 'Gustavo Player',
       email: 'chief@raizes.com',
-      passwordHash: 'pass2',
+      passwordHash: managerHash,
       role: 'MANAGER',
       businessUnitId: unit2.id,
     },
