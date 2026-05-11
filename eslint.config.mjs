@@ -1,17 +1,18 @@
 // @ts-check
 import eslint from '@eslint/js';
 import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
+import { defineConfig, globalIgnores } from 'eslint/config';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
-export default tseslint.config(
+export default defineConfig([
+  globalIgnores(['eslint.config.mjs', 'dist/**', 'node_modules/**', 'coverage/**', '.venv/**']),
   {
-    ignores: ['eslint.config.mjs', 'dist/**', 'generated/**', 'node_modules/**'],
-  },
-  eslint.configs.recommended,
-  ...tseslint.configs.recommendedTypeChecked,
-  eslintPluginPrettierRecommended,
-  {
+    extends: [
+      eslint.configs.recommended,
+      tseslint.configs.recommendedTypeChecked,
+      eslintPluginPrettierRecommended,
+    ],
     languageOptions: {
       globals: {
         ...globals.node,
@@ -23,8 +24,6 @@ export default tseslint.config(
         tsconfigRootDir: import.meta.dirname,
       },
     },
-  },
-  {
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-floating-promises': 'error',
@@ -44,4 +43,4 @@ export default tseslint.config(
       '@typescript-eslint/unbound-method': 'off',
     },
   },
-);
+]);
