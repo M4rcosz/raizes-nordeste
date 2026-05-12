@@ -6,6 +6,7 @@ import { ProductResponseDto } from '../dto/product-response.dto';
 import { PaginatedResponseDto } from '@shared/pagination/paginated-response.dto';
 import { sanitizeLimit, DEFAULT_LIMIT } from '@shared/pagination/pagination';
 import { ProductFilters } from '../../../domain/repositories/product.repository';
+import { Public } from '@shared/auth/public.decorator';
 
 @Controller('products')
 export class ProductsController {
@@ -15,6 +16,7 @@ export class ProductsController {
     private readonly getProductById: GetProductByIdUseCase,
   ) {}
 
+  @Public()
   @Get()
   async findActive(
     @Query('limit', new DefaultValuePipe(DEFAULT_LIMIT), ParseIntPipe) rawLimit: number,
@@ -33,6 +35,7 @@ export class ProductsController {
     );
   }
 
+  @Public()
   @Get('by-business-unit/:businessUnitId')
   async findByBusinessUnit(
     @Param('businessUnitId') businessUnitId: string,
@@ -57,6 +60,7 @@ export class ProductsController {
     );
   }
 
+  @Public()
   @Get(':productId')
   async findById(@Param('productId') productId: string): Promise<ProductResponseDto> {
     const product = await this.getProductById.execute(productId);
