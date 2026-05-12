@@ -6,7 +6,7 @@
     "deleteOutDir": true,
     "builder": {
       "type": "swc",
-      "options": {"extensions": [".ts", ".js"]}
+      "options": { "extensions": [".ts", ".js"] }
     },
     "typeCheck": true
   }

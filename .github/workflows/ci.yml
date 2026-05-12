@@ -27,6 +27,7 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://adminuser:postgres@localhost:5432/raizes_do_nordeste
+      JWT_SECRET_KEY: test-secret-only-for-ci
 
     steps:
       - uses: actions/checkout@v6

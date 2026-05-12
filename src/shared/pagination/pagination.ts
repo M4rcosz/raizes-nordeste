@@ -35,6 +35,7 @@ export function sanitizeLimit(rawLimit?: number): number {
   if (rawLimit === undefined || Number.isNaN(rawLimit)) {
     return DEFAULT_LIMIT;
   }
+
   return Math.min(MAX_LIMIT, Math.max(1, Math.floor(rawLimit)));
 }
 

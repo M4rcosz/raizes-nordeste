@@ -31,16 +31,16 @@ customer loyalty program — across multiple business units (franchises).
 
 ## Stack
 
-| Technology  | Version | Role                          |
-| ----------- | ------- | ----------------------------- |
-| Node.js     | 24      | Runtime                       |
-| NestJS      | 11      | HTTP framework / DI container |
-| TypeScript  | 5.7     | Language                      |
-| Prisma      | 7       | ORM and migration tool        |
-| PostgreSQL  | 17      | Relational database           |
-| Jest        | 30      | Unit and e2e testing          |
-| Docker      | 29      | Containerization              |
-| big.js      | 7       | Arbitrary-precision decimals  |
+| Technology | Version | Role                          |
+| ---------- | ------- | ----------------------------- |
+| Node.js    | 24      | Runtime                       |
+| NestJS     | 11      | HTTP framework / DI container |
+| TypeScript | 5.7     | Language                      |
+| Prisma     | 7       | ORM and migration tool        |
+| PostgreSQL | 17      | Relational database           |
+| Jest       | 30      | Unit and e2e testing          |
+| Docker     | 29      | Containerization              |
+| big.js     | 7       | Arbitrary-precision decimals  |
 
 ---
 
@@ -116,6 +116,7 @@ the domain (avoiding IEEE-754 rounding errors) and as `Decimal(12, 2)` in
 PostgreSQL. DTOs convert to `number` only at the HTTP edge.
 
 **6. Errors model intent, not transport**
+
 - `ProductsFetchException` (an application-layer error) wraps the underlying
   cause using the standard `Error.cause` option.
 - `NotFoundException` (NestJS) is thrown when a resource is missing, so the
@@ -339,15 +340,15 @@ npm run devs
 
 ### Domains
 
-| Domain              | Tables                                                                    |
-| ------------------- | ------------------------------------------------------------------------- |
-| Identity & Access   | `users`                                                                   |
-| Business Units      | `business_units`, `categories`, `products`, `business_unit_menu_items`    |
-| Inventory           | `inventory`, `inventory_transactions`                                     |
-| Orders              | `orders`, `order_items`                                                   |
-| Payments            | `payments`                                                                |
-| Promotions          | `promotions`, `order_promotions`                                          |
-| Loyalty             | `loyalty_accounts`, `loyalty_transactions`                                |
+| Domain            | Tables                                                                 |
+| ----------------- | ---------------------------------------------------------------------- |
+| Identity & Access | `users`                                                                |
+| Business Units    | `business_units`, `categories`, `products`, `business_unit_menu_items` |
+| Inventory         | `inventory`, `inventory_transactions`                                  |
+| Orders            | `orders`, `order_items`                                                |
+| Payments          | `payments`                                                             |
+| Promotions        | `promotions`, `order_promotions`                                       |
+| Loyalty           | `loyalty_accounts`, `loyalty_transactions`                             |
 
 ### Design Decisions
 
@@ -380,11 +381,11 @@ All routes are prefixed with **`/api`**.
 
 ### Products
 
-| Method | Path                                              | Description                                            |
-| ------ | ------------------------------------------------- | ------------------------------------------------------ |
-| `GET`  | `/api/products`                                   | List all active products with their base price.        |
-| `GET`  | `/api/products/:productId`                        | Get a single product by id. Returns `404` if missing.  |
-| `GET`  | `/api/products/by-business-unit/:businessUnitId`  | List products available at a business unit (effective price = `customPrice` when set, otherwise `basePrice`). |
+| Method | Path                                             | Description                                                                                                   |
+| ------ | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/api/products`                                  | List all active products with their base price.                                                               |
+| `GET`  | `/api/products/:productId`                       | Get a single product by id. Returns `404` if missing.                                                         |
+| `GET`  | `/api/products/by-business-unit/:businessUnitId` | List products available at a business unit (effective price = `customPrice` when set, otherwise `basePrice`). |
 
 #### Response — `ProductResponseDto`
 
@@ -403,10 +404,10 @@ All routes are prefixed with **`/api`**.
 
 ### Error responses
 
-| Status | When                                                    | Body shape                                          |
-| ------ | ------------------------------------------------------- | --------------------------------------------------- |
-| `404`  | A product or business unit does not exist               | `{ "statusCode": 404, "message": "...", "error": "Not Found" }` |
-| `500`  | Repository / database failure (`ProductsFetchException`)| Standard NestJS error envelope                      |
+| Status | When                                                     | Body shape                                                      |
+| ------ | -------------------------------------------------------- | --------------------------------------------------------------- |
+| `404`  | A product or business unit does not exist                | `{ "statusCode": 404, "message": "...", "error": "Not Found" }` |
+| `500`  | Repository / database failure (`ProductsFetchException`) | Standard NestJS error envelope                                  |
 
 ---
 
@@ -460,7 +461,7 @@ The product catalog module is shipped. Upcoming modules — already designed
 in the database schema — are:
 
 - [ ] **Auth** — JWT + role-based guards (`CUSTOMER`, `ATTENDANT`, `KITCHEN`,
-  `MANAGER`, `ADMIN`)
+      `MANAGER`, `ADMIN`)
 - [ ] **Orders** — order creation, item management, status transitions
 - [ ] **Payments** — gateway integration (mocked initially), refund flow
 - [ ] **Inventory** — stock, reservations, audit log of inventory transactions
