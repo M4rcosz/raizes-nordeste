@@ -7,8 +7,9 @@ browsing, order management, payment processing, inventory control and a
 customer loyalty program — across multiple business units (franchises).
 
 > **Status:** the project is being built incrementally. The product catalog
-> module is currently implemented; auth, orders, payments, inventory and
-> loyalty modules are planned (see [Roadmap](#roadmap)).
+> and identity modules are currently implemented (JWT login, global role
+> guard, argon2 hashing); orders, payments, inventory and loyalty modules
+> are planned (see [Roadmap](#roadmap)).
 
 ---
 
@@ -117,10 +118,16 @@ PostgreSQL. DTOs convert to `number` only at the HTTP edge.
 
 **6. Errors model intent, not transport**
 
-- `ProductsFetchException` (an application-layer error) wraps the underlying
-  cause using the standard `Error.cause` option.
-- `NotFoundException` (NestJS) is thrown when a resource is missing, so the
-  framework converts it to `404 Not Found` automatically.
+- Domain and application errors extend shared base classes
+  (`DomainError` / `ApplicationError`) that carry a transport-agnostic
+  `kind` (`not-found`, `invalid`, `conflict`, `unauthorized`, `forbidden`,
+  `unavailable`) — never an HTTP status.
+- A global exception filter (`shared/filter/`, registered via `APP_FILTER`)
+  is the single place that maps `kind` → HTTP status, re-wraps NestJS
+  `HttpException`s, and emits one consistent JSON envelope. It logs the full
+  `Error.cause` chain server-side but never leaks internals to the client.
+- `ProductsFetchError` (application layer) wraps the underlying repository
+  failure with the standard `Error.cause` option and `kind: unavailable`.
 
 **7. `shared/` is the cross-context kernel**
 Anything reused across two or more contexts (Prisma client lifecycle,
@@ -177,9 +184,11 @@ errors still fail the build.
 > surfaces only at runtime (DI injects `undefined`, validator silently
 > skipped, ORM loses the relation).
 >
-> **Does not currently affect this project** — Prisma does not rely on
-> `emitDecoratorMetadata`, domain entities are plain classes, and
-> `class-validator` is not yet wired. Watch for it when:
+> **Low risk for this project today** — Prisma does not rely on
+> `emitDecoratorMetadata` and domain entities are plain classes.
+> `class-validator` is now wired (global `ValidationPipe` + `SignInDto`),
+> but its DTOs are flat (no bidirectional aggregate references), so the
+> mis-emit cannot trigger yet. Watch for it when:
 >
 > - Adding `class-validator` DTOs with bidirectional aggregate references
 > - Adding modules with circular DI (use NestJS `forwardRef()`)
@@ -201,34 +210,42 @@ src/
 ├── main.ts                       ← Bootstrap: prefix /api, CORS, shutdown hooks
 ├── app.module.ts                 ← Root module wiring
 ├── shared/                       ← Cross-context kernel
+│   ├── auth/                     ← Global AuthGuard, @Public/@Roles, JWT payload
+│   ├── errors/                   ← DomainError/ApplicationError base + ErrorKind
+│   ├── filter/                   ← Global exception filter (error → envelope)
 │   ├── infrastructure/
 │   │   └── prisma/               ← @Global() PrismaService + lifecycle
 │   └── pagination/               ← Cursor-pagination types and DTO envelope
 └── modules/                      ← One folder per bounded context
-    └── business-units/           ← Products, Categories, Menu Items, Units
-        ├── business-units.module.ts
-        ├── domain/               ← Pure rules (no framework imports)
-        │   ├── entities/         ← Product, BusinessUnitMenuItem
-        │   └── repositories/     ← Interfaces + DI tokens
-        ├── application/          ← Orchestration
-        │   ├── use-cases/        ← One file per business action
-        │   └── errors/           ← Application-layer errors (e.g. fetch wrappers)
-        └── infrastructure/       ← Adapters
-            ├── persistence/      ← Prisma repository implementations
-            └── http/
-                ├── controllers/  ← NestJS controllers
-                └── dto/          ← Response DTOs (serialization only)
+    ├── business-units/           ← Products, Categories, Menu Items, Units
+    │   ├── business-units.module.ts
+    │   ├── domain/               ← Pure rules (no framework imports)
+    │   │   ├── entities/         ← Product, BusinessUnitMenuItem
+    │   │   └── repositories/     ← Interfaces + DI tokens
+    │   ├── application/          ← Orchestration
+    │   │   ├── use-cases/        ← One file per business action
+    │   │   └── errors/           ← App-layer errors (extend shared ApplicationError)
+    │   └── infrastructure/       ← Adapters
+    │       ├── persistence/      ← Prisma repository implementations
+    │       └── http/
+    │           ├── controllers/  ← NestJS controllers
+    │           └── dto/          ← Response DTOs (serialization only)
+    └── identity/                 ← Users, JWT auth, login, roles
+        ├── identity.module.ts
+        ├── domain/               ← User entity, repo + hasher/signer ports, UserRole
+        ├── application/          ← SignInUseCase + app-layer errors
+        └── infrastructure/       ← Argon2 hasher, JWT signer, auth controller/DTO
 prisma/
 ├── schema.prisma                 ← Single source of truth for the database
 ├── seed.ts                       ← Idempotent seed for local dev
 └── migrations/                   ← Versioned migration history
 test/
-└── app.e2e-spec.ts               ← End-to-end HTTP tests
+├── app.e2e-spec.ts               ← Product HTTP e2e
+└── global-error-filter.e2e-spec.ts ← Error envelope e2e (full pipeline)
 ```
 
-> Future contexts (`identity`, `inventory`, `orders`, `payments`,
-> `promotions`, `loyalty`) will follow the same internal shape under
-> `src/modules/`.
+> Remaining contexts (`inventory`, `orders`, `payments`, `promotions`,
+> `loyalty`) will follow the same internal shape under `src/modules/`.
 
 ---
 
@@ -379,6 +396,31 @@ npm run devs
 
 All routes are prefixed with **`/api`**.
 
+### Authentication
+
+A global `AuthGuard` protects every route by default; routes opt out with
+`@Public()`. **Every endpoint shipped so far is public.** Protected routes
+(none yet) will require a `Bearer` JWT in the `Authorization` header and may
+further restrict by role via `@Roles()`.
+
+| Method | Path              | Auth   | Description                                 |
+| ------ | ----------------- | ------ | ------------------------------------------- |
+| `POST` | `/api/auth/login` | Public | Exchange `username` + `password` for a JWT. |
+
+Request body — `SignInDto` (`password` ≥ 8 chars):
+
+```json
+{ "username": "jane", "password": "min-8-chars" }
+```
+
+Response — `200 OK`:
+
+```json
+{ "access_token": "eyJhbGciOiJI..." }
+```
+
+Invalid credentials return `401` (see [Error responses](#error-responses)).
+
 ### Products
 
 | Method | Path                                             | Description                                                                                                   |
@@ -404,10 +446,32 @@ All routes are prefixed with **`/api`**.
 
 ### Error responses
 
-| Status | When                                                     | Body shape                                                      |
-| ------ | -------------------------------------------------------- | --------------------------------------------------------------- |
-| `404`  | A product or business unit does not exist                | `{ "statusCode": 404, "message": "...", "error": "Not Found" }` |
-| `500`  | Repository / database failure (`ProductsFetchException`) | Standard NestJS error envelope                                  |
+Every error passes through the global exception filter and is returned with a
+**single consistent envelope**. Internal details (stack, `Error.cause` chain)
+are logged server-side but never sent to the client:
+
+```json
+{
+  "statusCode": 503,
+  "error": "Service Unavailable",
+  "message": "Could not retrieve active products.",
+  "path": "/api/products",
+  "timestamp": "2026-05-17T12:00:00.000Z"
+}
+```
+
+| Status | When                                                                   |
+| ------ | ---------------------------------------------------------------------- |
+| `400`  | Request body fails validation (`class-validator` + `ValidationPipe`)   |
+| `401`  | Invalid login credentials, or missing/invalid JWT on a protected route |
+| `404`  | Requested product / business unit does not exist                       |
+| `503`  | Repository / database failure (`ProductsFetchError`)                   |
+
+Application/domain errors carry a `kind` that the filter maps to a status:
+`not-found` → 404, `invalid` → 422, `conflict` → 409, `unauthorized` → 401,
+`forbidden` → 403, `unavailable` → 503. NestJS `HttpException`s (e.g.
+`NotFoundException`, validation `BadRequestException`) keep their own status
+and are re-wrapped into the same envelope.
 
 ---
 
@@ -429,13 +493,15 @@ npm run test:e2e
 
 ### Testing strategy
 
-- **Unit tests** mock the `IProductRepository` interface, so use cases are
-  validated without any database. Entities and DTOs are tested in isolation
-  for behavior (`isAvailable()`) and pure transformation (`fromEntity()`).
+- **Unit tests** substitute the repository interfaces (`IProductRepository`,
+  `IUserRepository`) with test doubles, so use cases and the `AuthGuard` are
+  validated without any database. Entities, DTOs and the global exception
+  filter are tested in isolation.
 - **e2e tests** boot the full Nest application against the development
-  database and exercise the HTTP surface.
+  database and exercise the HTTP surface, including the global error
+  envelope via a throwing repository (`global-error-filter.e2e-spec.ts`).
 - Each test asserts both **success paths** and **failure paths** — including
-  `NotFoundException` propagation and `ProductsFetchException` wrapping
+  `NotFoundException` propagation and `ProductsFetchError` wrapping
   with `Error.cause`.
 
 ---
@@ -457,11 +523,12 @@ npm run test:e2e
 
 ## Roadmap
 
-The product catalog module is shipped. Upcoming modules — already designed
-in the database schema — are:
+The product catalog and identity modules are shipped. Upcoming modules —
+already designed in the database schema — are:
 
-- [ ] **Auth** — JWT + role-based guards (`CUSTOMER`, `ATTENDANT`, `KITCHEN`,
-      `MANAGER`, `ADMIN`)
+- [x] **Auth** — JWT login, global role guard, argon2 hashing (`CUSTOMER`,
+      `ATTENDANT`, `KITCHEN`, `MANAGER`, `ADMIN`). Refresh-token rotation
+      and user registration still pending.
 - [ ] **Orders** — order creation, item management, status transitions
 - [ ] **Payments** — gateway integration (mocked initially), refund flow
 - [ ] **Inventory** — stock, reservations, audit log of inventory transactions

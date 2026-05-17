@@ -8,7 +8,7 @@ import {
 } from '../../domain/repositories/product.repository';
 import { GetProductByIdUseCase } from './get-product-by-id.use-case';
 import { Product } from '../../domain/entities/product.entity';
-import { ProductsFetchException } from '../errors/product-fetch.exception';
+import { ProductsFetchError } from '../errors/product-fetch.error';
 
 describe('GetProductByIdUseCase', () => {
   describe('execute', () => {
@@ -68,11 +68,11 @@ describe('GetProductByIdUseCase', () => {
       await expect(useCase.execute('missing-id')).rejects.toBeInstanceOf(NotFoundException);
     });
 
-    it('should throw ProductsFetchException wrapping the original error when the repository fails', async () => {
+    it('should throw ProductsFetchError wrapping the original error when the repository fails', async () => {
       const dbError = new Error('DB error');
       findById.mockRejectedValue(dbError);
 
-      await expect(useCase.execute('uuid-1')).rejects.toBeInstanceOf(ProductsFetchException);
+      await expect(useCase.execute('uuid-1')).rejects.toBeInstanceOf(ProductsFetchError);
       await expect(useCase.execute('uuid-1')).rejects.toMatchObject({ cause: dbError });
     });
   });

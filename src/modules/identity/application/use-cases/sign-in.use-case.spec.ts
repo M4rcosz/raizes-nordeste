@@ -6,7 +6,7 @@ import { IUserRepository, USER_REPOSITORY } from '../../domain/repositories/user
 import { IPasswordHasher, PASSWORD_HASHER } from '../../domain/ports/password-hasher.port';
 import { ITokenSigner, TOKEN_SIGNER } from '../../domain/ports/token-signer.port';
 import { User } from '../../domain/entities/user.entity';
-import { UsersFetchException } from '../errors/users-fetch.exception';
+import { UsersFetchError } from '../errors/users-fetch.error';
 
 describe('SignInUseCase', () => {
   let useCase: SignInUseCase;
@@ -97,11 +97,11 @@ describe('SignInUseCase', () => {
       expect(sign).not.toHaveBeenCalled();
     });
 
-    it('should wrap repository failure in UsersFetchException with cause', async () => {
+    it('should wrap repository failure in UsersFetchError with cause', async () => {
       const dbError = new Error('DB down');
       findByUsername.mockRejectedValue(dbError);
 
-      await expect(useCase.execute('panic', 'plain')).rejects.toBeInstanceOf(UsersFetchException);
+      await expect(useCase.execute('panic', 'plain')).rejects.toBeInstanceOf(UsersFetchError);
       await expect(useCase.execute('panic', 'plain')).rejects.toMatchObject({ cause: dbError });
     });
   });

@@ -1,6 +1,6 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Product } from '../../domain/entities/product.entity';
-import { ProductsFetchException } from '../errors/product-fetch.exception';
+import { ProductsFetchError } from '../errors/product-fetch.error';
 import {
   PRODUCT_REPOSITORY,
   type IProductRepository,
@@ -19,7 +19,7 @@ export class GetProductByIdUseCase {
     try {
       product = await this.products.findById(productId);
     } catch (err) {
-      throw new ProductsFetchException(`Could not retrieve product by id "${productId}".`, {
+      throw new ProductsFetchError(`Could not retrieve product by id "${productId}".`, {
         cause: err,
       });
     }
