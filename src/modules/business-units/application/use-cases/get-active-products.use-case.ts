@@ -4,7 +4,7 @@ import {
   ProductFilters,
   type IProductRepository,
 } from '../../domain/repositories/product.repository';
-import { ProductsFetchException } from '../errors/product-fetch.exception';
+import { ProductsFetchError } from '../errors/product-fetch.error';
 import { Product } from '../../domain/entities/product.entity';
 import { CursorPaginatedResult, buildCursorMeta } from '@shared/pagination/pagination';
 
@@ -31,7 +31,7 @@ export class GetActiveProductsUseCase {
         filters,
       });
     } catch (err) {
-      throw new ProductsFetchException('Could not retrieve active products.', { cause: err });
+      throw new ProductsFetchError('Could not retrieve active products.', { cause: err });
     }
 
     const hasMore = items.length > limit;

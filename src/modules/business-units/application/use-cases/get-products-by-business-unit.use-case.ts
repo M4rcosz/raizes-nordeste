@@ -5,7 +5,7 @@ import {
   ProductFilters,
 } from '../../domain/repositories/product.repository';
 import { Product } from '../../domain/entities/product.entity';
-import { ProductsFetchException } from '../errors/product-fetch.exception';
+import { ProductsFetchError } from '../errors/product-fetch.error';
 import { CursorPaginatedResult, buildCursorMeta } from '@shared/pagination/pagination';
 
 export interface GetProductsByBusinessUnitInput {
@@ -33,7 +33,7 @@ export class GetProductsByBusinessUnitUseCase {
         filters,
       });
     } catch (err) {
-      throw new ProductsFetchException(
+      throw new ProductsFetchError(
         `Could not retrieve products for business unit "${businessUnitId}".`,
         { cause: err },
       );

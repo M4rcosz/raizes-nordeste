@@ -7,7 +7,7 @@ import {
   PRODUCT_REPOSITORY,
 } from '../../domain/repositories/product.repository';
 import { Product } from '../../domain/entities/product.entity';
-import { ProductsFetchException } from '../errors/product-fetch.exception';
+import { ProductsFetchError } from '../errors/product-fetch.error';
 
 describe('GetProductsByBusinessUnitUseCase', () => {
   let useCase: GetProductsByBusinessUnitUseCase;
@@ -89,12 +89,12 @@ describe('GetProductsByBusinessUnitUseCase', () => {
       expect(result.meta).toEqual({ limit: 20, hasMore: false, nextCursor: null });
     });
 
-    it('should throw ProductsFetchException wrapping the original error when the repository fails', async () => {
+    it('should throw ProductsFetchError wrapping the original error when the repository fails', async () => {
       const dbError = new Error('DB error');
       findAllByBusinessUnit.mockRejectedValue(dbError);
 
       await expect(useCase.execute({ businessUnitId: 'bu-1', limit: 20 })).rejects.toBeInstanceOf(
-        ProductsFetchException,
+        ProductsFetchError,
       );
       await expect(useCase.execute({ businessUnitId: 'bu-1', limit: 20 })).rejects.toMatchObject({
         cause: dbError,

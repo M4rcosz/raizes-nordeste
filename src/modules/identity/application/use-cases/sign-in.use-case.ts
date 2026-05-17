@@ -4,7 +4,7 @@ import {
   type IUserRepository,
 } from '@modules/identity/domain/repositories/user.repository';
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
-import { UsersFetchException } from '../errors/users-fetch.exception';
+import { UsersFetchError } from '../errors/users-fetch.error';
 import {
   type IPasswordHasher,
   PASSWORD_HASHER,
@@ -28,7 +28,7 @@ export class SignInUseCase {
     try {
       user = await this.users.findByUsername(username);
     } catch (err) {
-      throw new UsersFetchException('Could not retrieve user.', { cause: err });
+      throw new UsersFetchError('Could not retrieve user.', { cause: err });
     }
 
     const isValid = await User.verifyPasswordOrDecoy(user, plainPassword, this.passwordHasher);

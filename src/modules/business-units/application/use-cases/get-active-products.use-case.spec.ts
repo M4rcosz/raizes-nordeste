@@ -6,7 +6,7 @@ import {
   PRODUCT_REPOSITORY,
 } from '../../domain/repositories/product.repository';
 import { GetActiveProductsUseCase } from './get-active-products.use-case';
-import { ProductsFetchException } from '../errors/product-fetch.exception';
+import { ProductsFetchError } from '../errors/product-fetch.error';
 import { Product } from '../../domain/entities/product.entity';
 
 describe('GetActiveProductsUseCase', () => {
@@ -100,11 +100,11 @@ describe('GetActiveProductsUseCase', () => {
       expect(result.meta).toEqual({ limit: 20, hasMore: false, nextCursor: null });
     });
 
-    it('should throw ProductsFetchException wrapping the original error when the repository fails', async () => {
+    it('should throw ProductsFetchError wrapping the original error when the repository fails', async () => {
       const dbError = new Error('DB error');
       findAllActive.mockRejectedValue(dbError);
 
-      await expect(useCase.execute({ limit: 20 })).rejects.toBeInstanceOf(ProductsFetchException);
+      await expect(useCase.execute({ limit: 20 })).rejects.toBeInstanceOf(ProductsFetchError);
       await expect(useCase.execute({ limit: 20 })).rejects.toMatchObject({ cause: dbError });
     });
   });
